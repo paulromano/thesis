@@ -1,0 +1,21 @@
+#gnuplot script
+
+# define line styles
+set style line 1 lt -1 lc rgb "blue" lw 2 pt 5
+set style line 2 lt  2 lc rgb "red"  lw 2 pt 7
+set style line 3 lt -1 lw 2
+
+# Create graph comparing MPI_GET in MPICH2 and OpenMPI
+set terminal postscript eps enhanced color
+set output "mpi_get.eps"
+set xlabel "Compute Nodes"
+set ylabel "Time (s)"
+set grid
+set key left top box
+plot "data" using 1:2 w lp ls 1 t 'MPICH2', \
+     "data" using 1:3 w lp ls 2 t 'OpenMPI'
+
+# Create graph comparing MPI_ACCUMULATE in MPICH2 and OpenMPI
+set output "mpi_accumulate.eps"
+plot "data" using 1:4 w lp ls 1 t 'MPICH2', \
+     "data" using 1:5 w lp ls 2 t 'OpenMPI'

@@ -1,0 +1,334 @@
+\chapter{Introduction}
+
+\newcommand{\rb}{\mathbf{r}}
+\newcommand{\Omegab}{\mathbf{\Omega}}
+\newcommand{\phasespace}{\mathbf{r},E,\mathbf{\Omega}}
+
+\section{Motivation}
+
+The ability to simulate complex transport phenomena using stochastic
+methods was recognized early on in the development of multiplying
+fission systems. Also recognized was the fact that while providing an
+elegant means of computing functionals, such methods would require a
+great amount of computation as well. The development of Monte Carlo
+methods has thus gone hand-in-hand with the development of computers
+over the course of the last half century.
+
+Due to the computationally-intensive nature of Monte Carlo methods,
+there has been an ever-present interest in parallelizing such
+simulations. Even in the first paper on the Monte Carlo method
+\cite{metropolis}, John Metropolis and Stanislaw Ulam recognized that
+solving the Boltzmann equation with the Monte Carlo method could be
+done in parallel very easily whereas the deterministic counterparts
+for solving the Boltzmann equation did not offer such a natural means
+of parallelism. With the introduction of vector computers in the early
+1970s, general-purpose parallel computing became a reality. In 1972,
+Troubetzkoy {\em et al.}  designed a Monte Carlo code to be run on the
+first vector computer, the ILLIAC-IV \cite{troubetzkoy}. The general
+principles from that work were later refined and extended greatly
+through the work of Forrest Brown in the 1980s
+\cite{brown-vector}. However, as Brown's work shows, the
+single-instruction multiple-data (SIMD) parallel model inherent to
+vector processing does not lend itself to the parallelism on particles
+in Monte Carlo simulations. Troubetzkoy {\em et al.} recognized this,
+remarking that ``the order and the nature of these physical events
+have little, if any, correlation from history to history,'' and thus
+following independent particle histories simultaneously using a SIMD
+model is difficult.
+
+The difficulties with vector processing of Monte Carlo codes led to
+the adoption of the single-process multiple data (SPMD) technique for
+parallelization. In this model, each different process tracks a
+particle independently of other processes, and between source
+iterations the processes communicate data through a message-passing
+interface. This means of parallelism was enabled by the
+introduction of message-passing standards in the late 1980s and early
+1990s such as PVM and MPI. The SPMD model proved much easier to use in
+practice and took advantage of the inherent parallelism on particles
+rather than instruction-level parallelism. As a result, it has since
+become ubiquitous for Monte Carlo simulations of transport phenomena.
+
+Thanks to the particle-level parallelism using SPMD techniques,
+extremely high parallel efficiencies could be achieved in Monte Carlo
+codes. Until the last decade, even the most demanding problems did not
+require transmitting large amounts of data between processors, and
+thus the total amount of time spent on communication was not
+significant compared to the amount of time spent on
+computation. However, today's computing power has created a demand for
+increasingly large and complex problems, requiring a greater number of
+particles to obtain decent statistics (and convergence in the case of
+eigenvalue calculations). This results in a correspondingly higher
+amount of communication, potentially degrading the parallel
+efficiency.
+
+As an example, we consider the simulation of a full-core PWR using
+Monte Carlo methods. Hoogenboom and Martin recently proposed a
+full-core benchmark problem \cite{hoogenboom} that will serve as a
+good example for our purposes. This benchmark model has 241
+assemblies, with each assembly containing a 17 by 17 square rod
+array. As a simplification, no control rods are modeled and thus all
+289 pins in an assembly are fuel. In Kelly {\em et al.}'s analysis of
+the Hoogenboom-Martin benchmark problem using the MC21 Monte Carlo
+code, 100 evenly spaced axial nodes were used over the 400 cm length
+of each fuel pin \cite{kelly}. Thus, one would need 6,964,900
+different materials in order to deplete each fuel region
+individually. If we go one step further and subdivide each axial node
+radially to resolve the difference in flux due to spatial
+self-shielding, this would add proportionally many tally regions and
+materials. With three radial zones, we would then need 20,894,700
+materials. To obtain good statistics would require many more histories
+than fuel regions, implying that we need to use hundreds of millions
+or possibly billions of particles.
+
+There are two problems that arise in such large problems. The first is
+as such: the fact that we are simulating possibly hundreds of millions
+of particles naturally means that we will want to use hundreds of
+thousands of processors in parallel or else we will be waiting weeks
+for our results. The binary tree-based algorithms used to transmit
+data collectively between processors will generally scale as $\log_2
+p$ where $p$ is the number of processors. Thus, as we increase the
+number of processors, we also increase the amount of communication. If
+we run $10^7$ histories per cycle in an eigenvalue calculation with
+1024 processors, to broadcast $10^7$ source points for the next cycle
+will entail sending 280 GB of data through the network assuming each
+source point contains 28 bytes of data! Thus, we see that for such
+problems, communication times may no longer be irrelevant when
+considering the parallel efficiency.
+
+The second problem is that the problem data itself may not fit on a
+single compute node. Let us again consider our PWR problem where we
+have 20,894,700 fuel regions. For each fuel region, we will have
+associated geometry, material, and tally data. In each material, let
+us also suppose we want to track 20 isotopes. For each isotope, we
+need to know its ZAID (4-byte integer), its cross section identifier
+(4-byte integer), and its number density (8-byte float). For each fuel
+region, we also need to tally the fission reaction rate, the
+$(n,\gamma)$ reaction rate, the $(n,2n)$ reaction rate, the
+$(n,\alpha)$ reaction rate, and the $(n,p)$ reaction rate to solve the
+Bateman equations and determine material compositions for the next
+time-step. Thus, we need six pairs of 8-byte floats for each fuel
+region to store the tally data. When you add up the material and tally
+data, the total comes out to at least 496 bytes for each region. Based
+on this estimate, we would need about 10 GB of memory just to store
+the material and tally data for all the fuel regions. Add in the
+cross-section and geometry data and this estimate gets larger. In a
+typical distributed-shared memory environment where we have eight or
+more processors sharing memory, the SPMD parallel model requires that
+each process have its own copy of geometry, cross-section, material,
+and tally data. So for a node with eight processors, our PWR model
+will need at the bare minimum 80 GB of memory. Even without the
+addition of radial zones in each fuel pin as we have done here, one
+would still need 28 GB of memory. Indeed, Kelly {\em et al.} had to
+turned off variance calculation for nuclide-level tallies to reduce
+memory usage to a point where they could run the problem at all
+\cite{kelly}.
+
+For the purposes of the present analysis, we focus primarily on the
+first problem, {\em i.e.} that existing parallel algorithms for Monte
+Carlo criticality calculations do not scale past a few compute nodes
+for large-scale problems. In Section \ref{sec:algorithms}, we describe
+the traditional parallel algorithm used in Monte Carlo criticality
+calculations and present a new algorithm. In Section
+\ref{sec:analysis}, we present a theoretical analysis of several
+fission bank algorithms and a summary of test cases that validate the
+theoretical analysis. In Section \ref{sec:other}, we discuss load
+balancing, ordering of the fission bank, and fault tolerance. Finally,
+in Section \ref{sec:conclusions}, we conclude by reviewing the salient
+points of this work as well as potential shortcomings of the method.
+
+\section{The Monte Carlo Method}
+
+At the heart of nuclear engineering and many associated fields is the
+study of the behavior of subatomic particles interacting with
+matter. Reactor engineers are interested in how much power is produced
+everywhere in a reactor; medical physicists are interested in how much
+energy is deposited in a human body due to radation treatments;
+nuclear astrophysicists are interested in how nuclear reactions can
+produce elements heavier than than hydrogen in stars; and so on. In
+order to determine such quantities, one generally needs knowledge of
+two things:
+\begin{enumerate}
+  \item An understanding of how the particles of interest interact
+    with the matter through which they're traveling; and
+  \item A mathematical description for how a distribution of particles
+    evolves in time.
+\end{enumerate}
+The study of particle interactions is of primary concern to nuclear
+physicists. The advent of quantum mechanics in the early 20th century
+greatly advanced the state of understanding of particle interactions,
+especially with respect to the scattering of particles, a subject
+which can not be understood well without considering quantum
+effects. The latter subject, {\em i.e.} the theory of particle
+transport, came to maturity in the middle and latter parts of the 20th
+century, with many advances coming from the nuclear reactor
+engineering community which was focused on studying the behavior of
+fission systems.
+
+The first point to recognize when considering how to systematically
+study particle transport is the fact that particle transport itself is
+stochastic in nature. A single particle moving through a medium will
+have a trajectory consisting of a number of successive random steps (a
+random walk). Thus, when we cast the problem into a strictly
+mathematical form, it's necessary to make a continuum hypothesis. This
+hypothesis implies that the particle density is high enough such that
+over the length scales we're interested in, the average behavior of
+particles will be observed. In certain situations, {\em e.g.} a
+reactor operating at very low power, the continuum hypothesis may no
+longer be valid and the actual behavior of particles may deviate
+significantly from its average.
+
+That being said, it is somewhat unnatural to start from the transport
+equation, which is meant to describe the average behavior of
+particles, and show that it can be solved by means of a Monte Carlo
+method. It should be self evident that directly simulating particles
+moving through a medium on random walks will indeed produce the
+quantities we are interested in, namely reaction rates in defined
+volumes. Nevertheless, this is what we will proceed to do as it is of
+practical interest to show that the Monte Carlo method is just one of
+many techniques to simulate particle transport (the remainder
+belonging to a class of deterministic numerical algorithms).
+
+The steady-state transport equation in its most general form can be
+written as
+\begin{equation}
+  \Omegab \cdot \nabla \psi (\phasespace) + \Sigma_t(\rb,E) \psi
+  (\phasespace) = Q(\phasespace)
+\end{equation}
+where $\psi(\phasespace)$ is the flux per unit volume, energy, and
+solid angle; $\Sigma_t(\rb,E)$ is the macroscopic total
+cross-sections; and $Q(\phasespace)$ is the source per unit volume,
+energy, and solid angle. This is a linear partial differential
+equation due to the operator on the first term, $\Omegab \cdot
+\nabla$. As we can see, there is no scattering term in this form of
+the transport equation. It is merely hidden as part of the source term
+on the right-hand side. In practice, solving the transport equation in
+this form necessitates iterating on the source term since the
+scattering source is not known {\em a priori}. For the sake of
+simplicity, we will write the dependence on space, energy, and angle
+as through a single vector $\Gamma$ that represent all of
+phase-space. The transport equation can then be written as
+\begin{equation}
+  \Omegab \cdot \nabla \psi (\Gamma) + \Sigma_t(\Gamma) \psi (\Gamma)
+  = Q(\Gamma).
+  \label{eq:te-phase}
+\end{equation}
+
+A common means of writing the solution to a partial differential
+equation is by means of a Green's function. In simple terms, the
+Green's function is the solution to an equation for a source isolated
+at an arbitary point. Thus, we can think of the Green's function
+$G(\Gamma, \Gamma')$ as the flux at $\Gamma$ arising from a unit
+source at $\Gamma'$. If we then write the actual source as a
+superposition of unit sources, the general solution can be given as a
+superposition of Green's functions.
+
+This can be demonstrated mathematically as follows. Let us suppose we
+know the solution for an arbitrary unit source:
+\begin{equation}
+  \Omegab \cdot \nabla G (\Gamma,\Gamma') + \Sigma_t(\Gamma) G
+  (\Gamma,\Gamma') = \delta (\Gamma - \Gamma').
+  \label{eq:te-green}
+\end{equation}
+Note that we can write source as a superposition of unit sources as
+\begin{equation}
+  Q(\Gamma) = \int_{\Gamma'} d\Gamma' \, \delta(\Gamma - \Gamma')
+  Q(\Gamma').
+\end{equation}
+Therefore, if we multiply equation \ref{eq:te-green} by the source and
+integrate, we obtain
+\begin{equation}
+  \int_{\Gamma'} d\Gamma' \, \Omegab \cdot \nabla G (\Gamma,\Gamma')
+  Q(\Gamma') + \int_{\Gamma'} d\Gamma' \, \Sigma_t(\Gamma) G
+  (\Gamma,\Gamma') Q(\Gamma') = \int_{\Gamma'} d\Gamma' \,
+  \delta(\Gamma - \Gamma') Q(\Gamma').
+\end{equation}
+Since $\Omega \cdot \nabla$ and $\Sigma_t(\Gamma)$ don't depend on
+$\Gamma'$, we can move them outside the integrals and rewrite the
+source in its original form:
+\begin{equation}
+   \Omegab \cdot \nabla \int_{\Gamma'} d\Gamma' \, G (\Gamma,\Gamma')
+   Q(\Gamma') + \Sigma_t(\Gamma) \int_{\Gamma'} d\Gamma' \, G
+   (\Gamma,\Gamma') Q(\Gamma') = Q(\Gamma).
+\end{equation}
+Comparing with equation \ref{eq:te-phase}, we can identify the general
+solution as
+\begin{equation}
+  \psi(\Gamma) = \int_{\Gamma'} d\Gamma' \, G (\Gamma,\Gamma') Q(\Gamma').
+  \label{eq:green-solution}
+\end{equation}
+Formally speaking, we haven't {\em truly} obtained a solution to the
+transport equation because the Green's function is still unknown to
+us. We only introduced it for mathematical convenience. The burden has
+now been shifted to the problem of how to obtain a Green's function.
+
+In the absence of scattering and multiplying media, equation
+\ref{eq:green-solution} is a Fredholm integral equation of the first
+kind where the intergal kernel is the Green's function itself. Such
+problems are very easy to solve since the kernel is merely a transport
+operator. In a Monte Carlo method, this amounts to estimating the
+first collision density (since the first collision will always be
+absorption, thus ending the neutron's life). However, when scattering
+and/or multiplying media are considered, the source then becomes
+proportional to the flux itself and the equation is then a Fredholm
+integral equation of the second kind. Solutions to Fredholm integral
+equations of the second kind can be written as a von Neumann series.
+
+
+\section{Other}
+
+One of the central problems in nuclear reactor theory is to predict
+the distribution of neutrons within a reactor, for it is this
+distribution which governs the rate at which reactions occur. From the
+reaction rate, we can determine a number of other parameters such as
+the power level in the core, fuel depletion and burnup, etc.
+
+In order to develop an equation that describes the distribution of
+neutrons in a reactor core, we must look at the physical processes
+occuring, i.e. neutrons scattering off of nuclei, absorption in
+different materials, neutrons leaking out of the core, and the
+production of neutrons by various means. The resulting equation is
+known as the neutron transport equation.\footnote{The neutron
+  transport equation is also commonly referred to as the Boltzmann
+  equation as L. Boltzmann developed a similar expression more than a
+  century ago in the development of the kinetic theory of
+  gases. However, we will refrain from using this terminology as the
+  neutron transport equation is, upon further inspection, actually
+  simpler than the Boltzmann equation that describes gases.}
+
+While it is relatively simple to derive the neutron transport equation
+as will be seen in the next section, it is much more difficult to
+solve it. In fact, it is only possible to solve the neutron transport
+equation in the simplest of cases. Thus, we are left with the choice
+of either making appoximations to solve the problem in question or to
+use numerical methods. Numerical methods, in connection with neutron
+transport, generally come in two flavors: discretization methods and
+stochastic methods. The purpose of this paper is to survey the use of
+Monte Carlo methods for stochastically solving the neutron transport
+equation.
+
+In the early days of the development of neutron transport theory, a
+vast assortment of analytical and approximate methods were developed
+to solve the neutron transport equation because the computers of the
+day simply could not solve problems of interest in a reasonable amount
+time. So complicated were the physical processes that Bell and
+Glasstone \cite{bell} were inspired to write:
+\begin{quote}
+{\it ``The neutron distribution problem could be solved by inserting
+  into the transport equation a complete set of the appropriate cross
+  sections, which represent the neutron interaction probabilities,
+  together with the geometrical arrangement of the materials in the
+  system. Numerical solutions could then be obtained by suitable
+  computation procedures, e.g. by Monte Carlo methods. In practice,
+  however, this proves not to be possible. First, the cross sections
+  and their variation with neutron energy are very complicated and not
+  completely known, and second, the geometrical arrangement of the
+  materials in a reactor is so complex that the transport equation
+  cannot be solved in a reasonable time even with a computer.''}
+\end{quote}
+Thanks to the great advances in computing over the last few decades,
+Monte Carlo simulation of neutron transport can now be done
+efficiently using computers as long as suitable variance reduction
+techniques are employed. In fact, Monte Carlo techniques are now
+widely employed over analytical techniques because of their speed,
+accuracy, and relative ease of use.
+

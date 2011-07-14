@@ -1,0 +1,8 @@
+#!/usr/bin/Rscript
+
+data <- read.table("data_list", header=F)
+postscript("QQplot.eps")
+par(cex=1.8)
+qqnorm(data[1:1000, ], main=NULL)
+grid(col="black",lty="dashed",lwd=1)
+dev.off()

@@ -1,0 +1,26 @@
+#gnuplot script
+
+# define line styles
+set style line 1 lt 0  lc rgb "blue" lw 2 pt 5
+set style line 2 lt 16 lc rgb "red"  lw 2 pt 7
+set style line 3 lt -1 lw 2
+
+# Create scaling graph for best-case
+set terminal emf color
+set output "best.emf"
+set xlabel "Compute Nodes"
+set ylabel "Parallel Speed-up"
+set grid
+set key left top box
+plot "data_best_weak"   using 1:(12.38*$1/$3) w lp ls 1 t 'Weak Scaling', \
+     "data_best_strong" using 1:(455.51/$3)   w lp ls 2 t 'Strong Scaling', \
+     x                                        w l  ls 3 t 'Ideal'
+
+
+# Create scaling graph for worst-case
+set output "worst.emf"
+set logscale y
+set logscale x
+set grid xtics ytics mxtics mytics
+plot "data_worst"   using 1:(12.35*$1/$3) w lp ls 1 t 'Weak Scaling', \
+     x                                    w l  ls 3 t 'Ideal'

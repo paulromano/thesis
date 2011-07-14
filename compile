@@ -1,0 +1,8 @@
+#!/bin/sh
+
+echo "chap1,biblio" | latex main.tex
+bibtex main.aux
+echo "chap1,biblio" | latex main.tex
+echo "chap1,biblio" | latex main.tex
+dvips -Ppdf main.dvi
+ps2pdf main.ps main.pdf

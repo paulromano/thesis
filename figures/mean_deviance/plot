@@ -1,0 +1,29 @@
+#gnuplot script
+
+# Determine least-squares fit to data
+f(x,p)=c/p*sqrt(x*(p-x))
+set fit logfile "/dev/null"
+fit f(x,8) "data8" using 1:2 via c
+
+# Plot data for 8 compute nodes
+set terminal postscript eps enhanced color
+set output "plot8_.eps"
+set xlabel "Compute Node" font "Helvetica, 24"
+set ylabel "Mean Deviation" font "Helvetica, 24"
+set xtics font "Helvetica, 20"
+set ytics font "Helvetica, 20"
+set yrange [120:320]
+set grid lt 2 lc 0
+set key box
+plot "data8"  using 1:2 w points lt 0 pt 5 t 'N=80000, Observed', \
+	 "data8"  using 1:3 w points lt 3 pt 4 t 'N=160000, Observed', \
+     f(x,8)             w line   lt -1     t 'N=80000, Fitted', \
+	 sqrt(2)*f(x,8)     w line   lt 3      t 'N=160000, Predicted'
+
+# Plot data for 16 compute nodes
+set output "plot16_.eps"
+set yrange [80:320]
+plot "data16"  using 1:2 w points lt 0 pt 5 t 'N=80000, Observed', \
+	 "data16"  using 1:3 w points lt 3 pt 4 t 'N=160000, Observed', \
+     f(x,16)             w line   lt -1     t 'N=80000, Predicted', \
+	 sqrt(2)*f(x,16)     w line   lt 3      t 'N=160000, Predicted'
