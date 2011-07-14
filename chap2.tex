@@ -62,7 +62,7 @@ required per site is 28 bytes. To \emph{broadcast} 10,000,000 source
 sites to 64 nodes will thus require transferring 17.92 GB of data.
 Since each compute node does not need to keep every source site in
 memory, one could modify the algorithm from a \emph{broadcast} to a
-\emph{scatter}. However, for practical reasons (e.g. work
+\emph{scatter}. However, for practical reasons ({\em e.g.} work
 self-scheduling \cite{brown-lectures}), this is normally not done in
 production Monte Carlo codes.
 
@@ -102,8 +102,8 @@ of the communication. One algorithm to achieve this is as follows:
 \item Each compute node samples sites at random from the fission bank
   using the same starting seed. A separate array on each compute node
   is created that consists of sites that were sampled local to that
-  node, i.e. if the index of the sampled site is between $a_i$ and
-  $b_i$, it is set aside;
+  node, {\em i.e.} if the index of the sampled site is between $a_i$
+  and $b_i$, it is set aside;
 \item If any node sampled more than $N/p$ fission sites where $p$ is
   the number of compute nodes, the extra sites are put in a separate
   array and sent to all other compute nodes. This can be done
@@ -128,7 +128,7 @@ adjacent node. Thus, each compute node sends/receives only two
 messages under normal circumstances.
 
 The following example illustrates how this algorithm works. Let us
-suppose we are simulating $N = 1000$ neutrons across four compute
+suppose we are simulating $N = 1,000$ neutrons across four compute
 nodes. For this example, it is instructive to look at the state of the
 fission bank and source bank at several points in the algorithm:
 \begin{enumerate}
@@ -146,7 +146,7 @@ produces 270 fission banks sites, $p_1$ produces 230, $p_2$ produces
 290, and $p_3$ produces 250. After each node samples from its fission
 bank sites, let's assume that $p_0$ has 260 source sites, $p_1$ has
 215, $p_2$ has 280, and $p_3$ has 245. Note that the total number of
-sampled sites is 1000 as needed. For each node to have the same number
+sampled sites is 1,000 as needed. For each node to have the same number
 of source sites, $p_0$ needs to send its right-most 10 sites to $p_1$,
 and $p_2$ needs to send its left-most 25 sites to $p_1$ and its
 right-most 5 sites to $p_3$. A schematic of this example is shown in
@@ -159,7 +159,6 @@ sites that are communicated between adjacent nodes.
   \caption{Example scenario illustrating new fission bank algorithm.}
   \label{fig:algorithm-new}
 \end{figure}
-
 
 \section{Analysis of Communication Requirements}
 \label{sec:analysis}
@@ -211,7 +210,8 @@ binomial tree algorithm. In this algorithm, the root process sends the
 data to one node in the first step, and then in the subsequent, both
 the root and the other node can send the data to other nodes. Thus, it
 takes a total of $\lceil \log_2 p \rceil$ steps to complete the
-communication. The time to complete the communication is
+communication where $\lceil x \rceil$ is the smallest integer not less
+than $x$. The time to complete the communication is
 \begin{equation}
   t_{\text{short}} = \lceil \log_2 p \rceil \left ( \alpha + sN\beta
   \right ).
@@ -277,10 +277,11 @@ In a Monte Carlo criticality simulation, the power iteration method is
 applied iteratively to obtain stochastic realizations of the source
 distribution and estimates of the $k$-eigenvalue. Let us define
 $\hat{S}^{(m)}$ to be the realization of the source distribution at
-cycle $m$ and $\hat{\epsilon}^{(m)}$ be the noise arising from the
-stochastic nature of the tracking process. We can write the stochastic
-realization in terms of the fundamental source distribution and the
-noise component as \cite{brissenden}
+cycle $m$ and $\hat{\epsilon}^{(m)}$ be the deviation from the
+deterministic solution arising from the stochastic nature of the
+tracking process. We can write the stochastic realization in terms of
+the fundamental source distribution and the fluctuating component as
+\cite{brissenden}
 \begin{equation}\label{eq:source}
   \hat{S}^{(m)}(\mathbf{r})= N S(\mathbf{r}) + \sqrt{N}
   \hat{\epsilon}^{(m)}(\mathbf{r}),
@@ -307,10 +308,12 @@ distributions, respectively, as
   \hat{k} = \frac{1}{N} \int \hat{S}(\mathbf{r}) \: d\mathbf{r} \quad
   \text{and} \quad k = \int S(\mathbf{r}) \: d\mathbf{r},
 \end{equation}
-noting that $S(\mathbf{r})$ is $O(1)$. One should note that the
-expected value $k$ calculated by Monte Carlo power iteration
-(\emph{i.e.} the method of successive generations) will be biased from
-the true fundamental eigenvalue of Eq. \ref{eq:NTE} by $O(1/N)$
+noting that $S(\mathbf{r})$ is $O(1)$ since the true source
+distribution is not a function of $N$ (see Nease {\em et al.}
+\cite{nease} for a thorough discussion). One should note that the
+expected value $k$ calculated by Monte Carlo power iteration ({\em
+  i.e.} the method of successive generations) will be biased from the
+true fundamental eigenvalue of Eq. \ref{eq:NTE} by $O(1/N)$
 \cite{brissenden}, but we will assume henceforth that the number of
 particle histories per cycle is sufficiently large to neglect this
 bias.
@@ -325,7 +328,8 @@ written as
 \end{equation}
 where $\mathbf{r}_i$ is the spatial location of the $i$-th fission
 site, $w_i$ is the statistical weight of the fission site at
-$\mathbf{r}_i$, and $M$ is the total number of fission sites. It is
+$\mathbf{r}_i$ ({\em i.e.} the weight of the neutron entering into a
+fission reaction), and $M$ is the total number of fission sites. It is
 clear that the total weight of the fission sites is simply the
 integral of the source distribution. Integrating Eq. \ref{eq:source}
 over all space, we obtain
@@ -341,14 +345,15 @@ to the integral of the noise component of the source distribution as
   N\hat{k} = Nk + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \:
   d\mathbf{r}.
 \end{equation}
-Since the expected value of $\hat{\epsilon}$ is zero, the expected value of
-its integral will also be zero. We thus see that the variance of the
-integral of the source distribution, i.e. the variance of the total
-weight of fission sites produced, is directly proportional to the
-variance of the integral of the noise component. Let us call this term
-$\sigma^2$ for simplicity:
+Since the expected value of $\hat{\epsilon}$ is zero, the expected
+value of its integral will also be zero. We thus see that the variance
+of the integral of the source distribution, {\em i.e.} the variance of
+the total weight of fission sites produced, is directly proportional
+to the variance of the integral of the noise component. Let us call
+this term $\sigma^2$ for simplicity:
 \begin{equation}
-  \text{Var} \left[ \int \hat{S}(\mathbf{r}) \right ] = N \sigma^2.
+  \text{Var} \left[ \int \hat{S}(\mathbf{r}) \: d\mathbf{r} \right ] =
+  N \sigma^2.
 \end{equation}
 The actual value of $\sigma^2$ will depend on the physical nature of
 the problem, whether variance reduction techniques are employed,
@@ -447,11 +452,14 @@ $f(x)$, it can be shown that
   \sqrt{\frac{2}{\pi} \int_{-\infty}^{\infty} f(x) \left ( x - \mu
     \right )^2 \: dx}
 \end{equation}
-and thus the mean absolute deviation is $\sqrt{2/\pi}$ times the
-standard deviation. Therefore, to evaluate the mean absolute deviation
-of $M_i$, we need to first determine its variance. Substituting
-Eq. \ref{eq:average_k_as_sum} in Eq. \ref{eq:sites_per_node}, we can
-rewrite $M_i$ solely in terms of $\hat{k}_1, \dots, \hat{k}_p$:
+by substituting the probability distribution function of a normal
+distribution for $f(x)$, making a change of variables, and integrating
+both sides. Thus the mean absolute deviation is $\sqrt{2/\pi}$ times
+the standard deviation. Therefore, to evaluate the mean absolute
+deviation of $M_i$, we need to first determine its
+variance. Substituting Eq. \ref{eq:average_k_as_sum} in
+Eq. \ref{eq:sites_per_node}, we can rewrite $M_i$ solely in terms of
+$\hat{k}_1, \dots, \hat{k}_p$:
 \begin{equation}
   M_i = \frac{N \hat{k}_i}{\sum\limits_{j=1}^p \hat{k}_j}.
 \end{equation}
@@ -481,8 +489,8 @@ $\sum_{i=1}^j M_i$ is
   \text{Var} \left [ \sum_{i=1}^j M_i \right ] =
   \frac{Nj(p-j)}{k^2p^2} \sigma^2
 \end{equation}
-Thus, the expected amount of communication on node $j$, i.e. the mean
-absolute deviation of $\sum_{i=1}^j M_i$ is proportional to
+Thus, the expected amount of communication on node $j$, {\em i.e.} the
+mean absolute deviation of $\sum_{i=1}^j M_i$ is proportional to
 \begin{equation}\label{eq:comm-cost}
   E \left [ \Lambda_j \right ] = \sqrt{\frac{2Nj(p-j)\sigma^2}{\pi
       k^2p^2}}.
@@ -492,9 +500,9 @@ intuition:
 \begin{itemize}
 \item As the number of histories increases, the communication cost on
   each node increases as well;
-\item If $p=1$, i.e. if the problem is run on only one compute node,
-  the variance will be zero. This reflects the fact that exactly $N$
-  sites will be sampled if there is only one node.
+\item If $p=1$, {\em i.e.} if the problem is run on only one compute
+  node, the variance will be zero. This reflects the fact that exactly
+  $N$ sites will be sampled if there is only one node.
 \item For $j=p$, the variance will be zero. Again, this says that when
   you sum the number of sites from each node, you will get exactly $N$
   sites.
@@ -526,14 +534,14 @@ case are shown in Table \ref{tab:cases}.
     \hline
     Case & Compute Nodes ($p$) & Histories ($N$) \\
     \hline
-    1 & 8 & 80000 \\
-    2 & 8 & 160000 \\
-    3 & 16 & 80000 \\
-    4 & 16 & 160000 \\
+    1 & 8 & 80,000 \\
+    2 & 8 & 160,000 \\
+    3 & 16 & 80,000 \\
+    4 & 16 & 160,000 \\
     \hline
   \end{tabular}
 \end{table}
-Each case was run for 10000 cycles and at the end of each run, the
+Each case was run for 10,000 cycles and at the end of each run, the
 standard deviation of the number of fission bank sites sent to
 neighboring nodes was determined for each node as a proxy for the
 communication cost. For Case 1, the data was fit to the following
@@ -622,22 +630,22 @@ In the limit of large $p$, this ratio becomes
 To fully appreciate what this means, we can infer values of $\sigma$
 and $k$ from the aforementioned test cases to determine what the ratio
 actually is. Recall that $\sigma$ tells us how much stochastic noise
-there is in the integrated fission source. Using $\sigma = 1.73$ and
-$k = 1$, the novel algorithm would be about 2000 times faster than the
-traditional algorithm for $N = 1000000$. Also note that as $N$
-increases, the novel algorithm will outperform the traditional
-algorithm by an even wider margin.
+there is in the integrated fission source. The sample standard
+deviation for our validation cases was $\sigma = 1.73$. Using this
+value and $k = 1$, we estimate that the novel algorithm would be about
+2,000 times faster than the traditional algorithm for $N =
+1,000,000$. Also note that as $N$ increases, the novel algorithm will
+outperform the traditional algorithm by an even wider margin.
 
 To determine the actual performance of the novel algorithm relative to
 the traditional algorithm, both algorithms were implemented in the
 aforementioned simple Monte Carlo code. A separate simulation using
 each of the algorithms was run from a single compute node up to 88
 compute nodes in parallel. In each case, the number of histories was
-40000 times the number of compute nodes so that each compute node
-simulations the same number of histories. Each simulation was run for
-20 cycles. Figure \ref{fig:algorithm-time} shows the total time spent
-on fission bank synchronization for the traditional and novel
-algorithms.
+40,000 times the number of compute nodes so that each compute node
+simulates the same number of histories. Each simulation was run for 20
+cycles. Figure \ref{fig:algorithm-time} shows the total time spent on
+fission bank synchronization for the traditional and novel algorithms.
 \begin{figure}[h!]
   \centering
   \includegraphics[width=0.75\textwidth]{figures/algorithm_results/time.eps}
@@ -645,11 +653,13 @@ algorithms.
   \label{fig:algorithm-time}
 \end{figure}
 We see that the performance of the novel algorithm doesn't quite meet
-the predicted performance based on the above analysis, but this is bit
-surprising given the number of simplying assumptions made in the
-course of the analysis. Notwithstanding, the new algorithm performs
-nearly two orders of magnitude faster than the traditional algorithm
-for large $p$ and large $N$.
+the predicted performance based on the above analysis, but this is not
+surprising given the number of simplifying assumptions made in the
+course of the analysis. Most importantly, we have ignored the time
+spent sampling fission sites and copying data in memory which may
+become non-negligible for large $N$. Notwithstanding, the new
+algorithm performs nearly two orders of magnitude faster than the
+traditional algorithm for large $p$ and large $N$.
 
 \section{Other Considerations}
 \label{sec:other}
@@ -763,6 +773,17 @@ amount of communication in the algorithm is independent of the number
 of processors and instead will depend on the number of histories per
 cycle and the physical characteristics of the problem at hand. Again,
 testing using our simple Monte Carlo code confirm this prediction.
+
+The reader should keep in mind that while the algorithm presented here
+will significantly improve the time necessary to sample and distribute
+fission sites between cycles, it has no effect on the actual transport
+simulation of particles moving through a geometry. Thus, it will not
+improve smaller simulations that would typically run on a
+workstation. However, for large simulations that necessitate the use
+of a large cluster or supercomputer to complete in a reasonable amount
+of time, this novel algorithm will improve the parallel efficiency and
+is an important step in achieving scalability up to thousands of
+processors.
 
 Potential shortcomings of the present algorithm include the inability
 to provide load balancing using existing algorithms for heterogeneous
