@@ -1,8 +1,11 @@
 #!/bin/sh
 
-echo "chap1,biblio" | latex main.tex
+# CHAPTERS=chap1,chap2,biblio
+CHAPTERS=all
+
+echo $CHAPTERS | latex main.tex
 bibtex main.aux
-echo "chap1,biblio" | latex main.tex
-echo "chap1,biblio" | latex main.tex
+echo $CHAPTERS | latex main.tex
+echo $CHAPTERS | latex main.tex
 dvips -Ppdf main.dvi
 ps2pdf main.ps main.pdf
