@@ -12,7 +12,7 @@ the work, and then send their results to the master at the end of the
 simulation (or a source iteration in the case of an eigenvalue
 calculation). This idea is illustrated in Figure
 \ref{fig:master-slave}.
-\begin{figure}[ht]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.9\textwidth]{figures/master-slave/master-slave.eps}
   \caption{Typical master-slave algorithm.}
@@ -74,7 +74,7 @@ synchronization algorithm, it is desirable to move away from the
 typical master-slave algorithm to an algorithm whereby the compute
 nodes communicate with one another only as needed. This concept is
 illustrated in Figure \ref{fig:slave-only}.
-\begin{figure}[ht]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.9\textwidth]{figures/master-slave/slave-only.eps}
   \caption{Desired communication topology with no master process.}
@@ -153,7 +153,7 @@ right-most 5 sites to $p_3$. A schematic of this example is shown in
 Figure \ref{fig:algorithm-new}. The data local to each node is given a
 different hatching, and the cross-hatched regions represent source
 sites that are communicated between adjacent nodes.
-\begin{figure}[ht]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.9\textwidth]{figures/algorithm_schematic/algorithm-new.eps}
   \caption{Example scenario illustrating new fission bank algorithm.}
@@ -518,7 +518,7 @@ with the theoretical analysis. The algorithm described in section
 \ref{sec:algorithm} was implemented in a simple Monte Carlo code
 \cite{romano-LANL}. The number of compute nodes and histories for each
 case are shown in Table \ref{tab:cases}.
-\begin{table}[ht]
+\begin{table}[h!]
   \centering
   \caption{Four test cases for fission bank algorithm.}
   \label{tab:cases}
@@ -552,14 +552,14 @@ prediction for Case 2. Figure \ref{fig:mean-deviance16} shows the
 expected number of fission bank sites sent or received from
 neighboring compute nodes for Cases 3 and 4 along with the predicted
 fits.
-\begin{figure}[ht]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.75\textwidth]{figures/mean_deviance/plot8.eps}
   \caption{Expected number of fission bank sites sent to neighboring
     nodes using 8 compute nodes}
   \label{fig:mean-deviance8}
 \end{figure}
-\begin{figure}[ht]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.75\textwidth]{figures/mean_deviance/plot16.eps}
   \caption{Expected number of fission bank sites sent to neighboring
@@ -582,7 +582,7 @@ data are normally distributed, the points on the Q-Q plot should lie
 along a line. Figure \ref{fig:QQ-plot} shows a Q-Q plot for the number
 of fission bank sites sent or received on the first node for the Case
 1.
-\begin{figure}[ht]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.75\textwidth,angle=-90]{figures/QQ_plot/QQplot.eps}
   \caption{Q-Q plot of $M_1$ for Case 1}
@@ -638,7 +638,7 @@ simulations the same number of histories. Each simulation was run for
 20 cycles. Figure \ref{fig:algorithm-time} shows the total time spent
 on fission bank synchronization for the traditional and novel
 algorithms.
-\begin{figure}[ht]
+\begin{figure}[h!]
   \centering
   \includegraphics[width=0.75\textwidth]{figures/algorithm_results/time.eps}
   \caption{Execution time for fission bank algorithms}
