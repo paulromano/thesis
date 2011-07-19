@@ -3,38 +3,38 @@
 # CHAPTERS=chap1,chap2,biblio
 CHAPTERS=all
 
-echo -e -n " Running LaTeX 1..."
+echo -e -n " Running LaTeX 1............ "
 echo $CHAPTERS | latex main.tex > /dev/null
 if [ $? -eq 0 ]; then
-  echo -e "   [  \033[32mOK\033[0m  ]"
+  echo -e "[  \033[32mOK\033[0m  ]"
 fi
 
-echo -e -n " Running BibTeX..."
+echo -e -n " Running BibTeX............. "
 bibtex main.aux > /dev/null
 if [ $? -eq 0 ]; then
-  echo -e "    [  \033[32mOK\033[0m  ]"
+  echo -e "[  \033[32mOK\033[0m  ]"
 fi
 
-echo -e -n " Running LaTeX 2..."
+echo -e -n " Running LaTeX 2............ "
 echo $CHAPTERS | latex main.tex > /dev/null
 if [ $? -eq 0 ]; then
-  echo -e "   [  \033[32mOK\033[0m  ]"
+  echo -e "[  \033[32mOK\033[0m  ]"
 fi
 
-echo -e -n " Running LaTeX 3..."
+echo -e -n " Running LaTeX 3............ "
 echo $CHAPTERS | latex main.tex > /dev/null
 if [ $? -eq 0 ]; then
-  echo -e "   [  \033[32mOK\033[0m  ]"
+  echo -e "[  \033[32mOK\033[0m  ]"
 fi
 
-echo -e -n " Running dvips..."
+echo -e -n " Running dvips.............. "
 dvips -Ppdf main.dvi > /dev/null 2>&1
 if [ $? -eq 0 ]; then
-  echo -e "     [  \033[32mOK\033[0m  ]"
+  echo -e "[  \033[32mOK\033[0m  ]"
 fi
 
-echo -e -n " Running ps2pdf..."
+echo -e -n " Running ps2pdf............. "
 ps2pdf main.ps main.pdf > /dev/null
 if [ $? -eq 0 ]; then
-  echo -e "    [  \033[32mOK\033[0m  ]"
+  echo -e "[  \033[32mOK\033[0m  ]"
 fi
