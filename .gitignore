@@ -1,0 +1,10 @@
+#LaTeX output files
+*.aux
+*.bbl
+*.blg
+*.dvi
+*.lof
+*.log
+*.lot
+*.out
+*.toc
