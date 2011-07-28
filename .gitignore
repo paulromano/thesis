@@ -8,3 +8,6 @@
 *.lot
 *.out
 *.toc
+
+# Emacs temporary files
+*~

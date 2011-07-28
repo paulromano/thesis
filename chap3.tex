@@ -1,0 +1,100 @@
+\chapter{The OpenMC Monte Carlo Code}
+
+\section{Background}
+
+As part of the present work, a general Monte Carlo neutron transport code was
+written to study parallel algorithms and related topics. The development of the
+code started as merely a simplistic platform within which algorithms could be
+easily tested. In the early days of the code, the geometry was a simple
+structured mesh and the physics was based on predefined (fake) multigroup
+cross-sections. However, the study of domain decomposition schemes in realistic
+geometries led to a desire to greatly expand the capabilities of the code.
+
+In early 2011, the geometry and physics from the original toy code was gutted
+and replaced with constructive solid geometry routines and physics based on
+ACE-format cross section data. The ACE (A Compant ENDF) format originated at Los
+Alamos in support of their MCNP5/MCNPX codes and is now used in several other
+codes.
+
+\section{Energy Grid Methods}
+
+One critical aspect of the design of a continuous energy Monte Carlo particle
+transport code is how the continuous energy cross sections for each nuclide in
+the problem are stored as a function of energy. In the ENDF evaluation (and
+consequently the ACE format cross sections), each nuclide has cross sections
+tabulated at different energies. Some nuclides may only have a few points
+tabulated (e.g. H-1) whereas other nuclides may have hundreds or thousands of
+points tabulated (e.g. U-238).
+
+At each collision, it is necessary to sample the probability of having a
+particular type of interaction whether it be elastic scattering, (n,2n), level
+inelastic scattering, etc. this requires looking up the microscopic cross
+sections for these reactions for each nuclide within the target material. Since
+each nuclide has a unique energy grid, it would be necessary to search for the
+appropriate index for each nuclide at every collision. This can become a very
+time-consuming process. In fact, in the MCNP code (which does not have any type
+of unionized energy grid), energy grid searches may account for up to 30\% of
+the time spent in computation. Thus, there is a strong motive to implement a
+method of reducing the number of energy grid searches in order to speed up the
+calculation.
+
+\subsection{Unionized Energy Grid}
+
+The most na\"{i}ve method to reduce the number of energy grid searches is to
+construct a new energy grid that consists of the union of the energy points of
+each nuclide and use this energy grid for all nuclides. This method is
+computationally very efficient as it only requires one energy grid search at
+each collision as well as one interpolation between cross section values since
+the interpolation factor can be used for all nuclides. However, it requires
+redundant storage of cross section values at points which were added to each
+nuclide grid. This additional burden on memory storage can become quite
+prohibitive. To lessen that burden, the unionized energy grid can be thinned
+with cross sections reconstructed on the thinned energy grid.
+
+This method is currently employed in the SERPENT Monte Carlo code [REF]. Users
+of SERPENT commonly run into memory issues when trying to run calculations in
+parallel since a copy of the cross sections has to be stored for each
+processor. This limits the number of processors that can be used on a single
+node when running in parallel.
+
+\subsection{Lethargy Mapping}
+
+In the MC21 Monte Carlo code \cite{mc21}, to reduce the amount of work
+associated with energy grid searches, a lethargy map is created to limit the
+range of energies that must be searched for each nuclide. First, the maximum
+lethargy is calculated as
+\begin{equation}\label{eq:max-lethargy}
+  u_0 = \ln\frac{E_{max}}{E_{min}}.
+\end{equation}
+The entire energy range is then split into $N$ lethargy bins each of width
+$u_0/N$. For each nuclide, a map is created that relates the bounds of each
+lethargy bin to corresponding indices on the nuclide's energy grid.
+
+During each collision, the lethargy bin of the particle is given by
+\begin{equation}\label{eq:lethargy-bin}
+  i = 1 + \frac{N}{u_0}\ln\frac{E_{max}}{E}.
+\end{equation}
+The lethargy map will then give the lower and upper bounds on the nuclide's
+energy grid for the given lethargy bin. The subsequent grid search is performed
+only over the limited energy range given by the bounds determined. The greater
+the number of lethargy bins, the faster the searches can be performed. The
+downside is that a greater number of lethargy bins necessitates a proportionally
+higher memory requirement.
+
+\subsection{Unionized Energy Grid with Nuclide Pointers}
+
+While having a unionized grid that is used for all nuclides allows for very fast
+lookup of cross sections, the burden on memory is in many circumstances
+unacceptable. The OpenMC Monte Carlo code utilizes a method that allows for a
+single energy grid search to be performed at every collision while avoiding the
+redundant storage of cross section values. Instead of using the unionized grid
+for eveyr nuclide, the original energy grid of each nuclide is kept and a list
+of pointers (of the same length as the unionized energy grid) is constructed for
+each nuclide that gives the corresponding grid index on the nuclide grid for a
+given grid index on the unionized grid. One must still interpolate on cross
+section values for each nuclide since the interpolation factors will generally
+be different. Figure FIG illustrates this method.
+
+\subsection{Memory Requirements}
+
+FILL.
