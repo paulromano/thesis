@@ -755,6 +755,42 @@ parallel performance since it entails collective communication between
 all processors. Notwithstanding, the algorithm we have presented here
 does not inhibit the use of fault tolerance in this manner.
 
+\section{Performance Testing}
+
+Evaluating the performance of any parallel algorithm is made difficult by the
+fact that there are a vast number of factors which may affect parallel
+performance. For example, running a simulation on very slow processors may yield
+very good parallel scaling whereas the same simulation run on fast processors
+may show poor parallel scaling due merely to the relative amount of computation
+and communication. Monte Carlo criticality calculations have shown reasonable
+parallel performance on multi-core desktop and moderately sized
+clusters. However, to date, no one has demonstrated parallel scaling past a few
+hundred processors.
+
+To determine the actual performance of the novel algorithm, it was implemented
+in the OpenMC Monte Carlo code [REF]. A simple model was then constructed and
+simulated on the Jaguar XT5 supercomputer at the National Center for
+Computational Sciences and Oak Ridge National Laboratory. The Jaguar XT5
+contains 18,688 compute nodes, each with dual hex-core AMD Opteron 2435
+processors running at 2.6 GHz. In total, there are over 200,000 total processors
+available.
+
+A weak parallel scaling scheme was run with a fixed number of particles per
+processor. The base case was run with 960 processors running 160,000,000
+particles per cycle. Then, each successive run doubled the number of processors
+and particles. The last case was run with 15,360 processors running 2.56 billion
+particles per history. Figure \ref{fig:jaguar-scaling} shows the near-linear
+parallel scaling of OpenMC with the novel fission bank algorithm up to 15,360
+processors.
+\begin{figure}[h!]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/jaguar_results/jaguar.eps}
+  \caption{Parallel speedup on Jaguar XT5 supercomputer.}
+  \label{fig:jaguar-scaling}
+\end{figure}
+Note that with 15,360 processors, the code is simulating about 600 million
+particle histories per second.
+
 \section{Conclusions}
 \label{sec:conclusions}
 
