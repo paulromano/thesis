@@ -1,0 +1,80 @@
+%% Creator: Inkscape inkscape 0.48.2, www.inkscape.org
+%% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
+%% Accompanies image file 'history.pdf' (pdf, eps, ps)
+%%
+%% To include the image in your LaTeX document, write
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics{<filename>.pdf}
+%% To scale the image, write
+%%   \def\svgwidth{<desired width>}
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics[width=<desired width>]{<filename>.pdf}
+%%
+%% Images with a different path to the parent latex file can
+%% be accessed with the `import' package (which may need to be
+%% installed) using
+%%   \usepackage{import}
+%% in the preamble, and then including the image with
+%%   \import{<path to file>}{<filename>.pdf_tex}
+%% Alternatively, one can specify
+%%   \graphicspath{{<path to file>/}}
+%% 
+%% For more information, please see info/svg-inkscape on CTAN:
+%%   http://tug.ctan.org/tex-archive/info/svg-inkscape
+%%
+\begingroup%
+  \makeatletter%
+  \providecommand\color[2][]{%
+    \errmessage{(Inkscape) Color is used for the text in Inkscape, but the package 'color.sty' is not loaded}%
+    \renewcommand\color[2][]{}%
+  }%
+  \providecommand\transparent[1]{%
+    \errmessage{(Inkscape) Transparency is used (non-zero) for the text in Inkscape, but the package 'transparent.sty' is not loaded}%
+    \renewcommand\transparent[1]{}%
+  }%
+  \providecommand\rotatebox[2]{#2}%
+  \ifx\svgwidth\undefined%
+    \setlength{\unitlength}{288.94375bp}%
+    \ifx\svgscale\undefined%
+      \relax%
+    \else%
+      \setlength{\unitlength}{\unitlength * \real{\svgscale}}%
+    \fi%
+  \else%
+    \setlength{\unitlength}{\svgwidth}%
+  \fi%
+  \global\let\svgwidth\undefined%
+  \global\let\svgscale\undefined%
+  \makeatother%
+  \begin{picture}(1,0.79737622)%
+    \put(0,0){\includegraphics[width=\unitlength]{history.pdf}}%
+    \put(0.08400207,0.7489347){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{Processor}}}%
+    \put(0.00094092,0.72124765){\color[rgb]{0,0,0}\rotatebox{-90}{\makebox(0,0)[lb]{\smash{Realization}}}}%
+    \put(0.11263005,0.05952716){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{N,1}$}}}%
+    \put(0.3618135,0.05952716){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{N,2}$}}}%
+    \put(0.7494322,0.05952716){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{N,p}$}}}%
+    \put(0.61099695,0.05952716){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\dots$}}}%
+    \put(0.1956912,0.17027536){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\vdots$}}}%
+    \put(0.44487465,0.17027536){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\vdots$}}}%
+    \put(0.61099695,0.17027536){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\ddots$}}}%
+    \put(0.83249335,0.17027536){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\vdots$}}}%
+    \put(0.11263005,0.55789406){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{2,1}$}}}%
+    \put(0.3618135,0.55789406){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{2,2}$}}}%
+    \put(0.11263005,0.44714586){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{3,1}$}}}%
+    \put(0.11263005,0.33639766){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{4,1}$}}}%
+    \put(0.3618135,0.44714586){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{3,2}$}}}%
+    \put(0.3618135,0.33639766){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{4,2}$}}}%
+    \put(0.7494322,0.55789406){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{2,p}$}}}%
+    \put(0.7494322,0.44714586){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{3,p}$}}}%
+    \put(0.7494322,0.33639766){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{4,p}$}}}%
+    \put(0.61099695,0.55789406){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\dots$}}}%
+    \put(0.61099695,0.44714586){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\dots$}}}%
+    \put(0.61099695,0.33639766){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\dots$}}}%
+    \put(0.11168912,0.66587355){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{1,1}$}}}%
+    \put(0.36087257,0.66587355){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{1,2}$}}}%
+    \put(0.74849127,0.66587355){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$x_{1,p}$}}}%
+    \put(0.61005602,0.66587355){\color[rgb]{0,0,0}\makebox(0,0)[lb]{\smash{$\dots$}}}%
+  \end{picture}%
+\endgroup%

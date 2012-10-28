@@ -1,100 +1,799 @@
-\chapter{The OpenMC Monte Carlo Code}
+\chapter{Fission Bank Algorithms}
+\label{chap:fission-bank}
 
-\section{Background}
+\section{Introduction}
 
-As part of the present work, a general Monte Carlo neutron transport code was
-written to study parallel algorithms and related topics. The development of the
-code started as merely a simplistic platform within which algorithms could be
-easily tested. In the early days of the code, the geometry was a simple
-structured mesh and the physics was based on predefined (fake) multigroup
-cross-sections. However, the study of domain decomposition schemes in realistic
-geometries led to a desire to greatly expand the capabilities of the code.
+We began discussing in \autoref{chap:intro} several aspects of Monte Carlo
+simulations that may inhibit them from scaling to large numbers of
+processors. One of these aspects is the parallelization of the fission source
+iterations that are necessary in an eigenvalue calculation. Traditional parallel
+implementations of the fission source iterations have been shown to degrade
+parallel efficiency with just tens or hundreds of processors
+\cite{physor-hoogenboom-2012}. Thus, in order to scale Monte Carlo eigenvalue
+calculations to thousands or millions of processors, a new approach is needed
+for parallelizing fission source iterations.
 
-In early 2011, the geometry and physics from the original toy code was gutted
-and replaced with constructive solid geometry routines and physics based on
-ACE-format cross section data. The ACE (A Compant ENDF) format originated at Los
-Alamos in support of their MCNP5/MCNPX codes and is now used in several other
-codes.
+Within each fission source iteration, $N$ source neutrons are simulated and
+create $M$ fission sites\footnote{The production of fission sites is weighted
+  such that expected value of $M$ is $N$. However, in any given generation, it
+  is unlikely that $M=N$ exactly.} that are stored in the fission bank. To
+ensure that the neutron population does not grow or shrink exponentially, $N$
+source sites for the next generation are sampled from the $M$ fission bank sites
+that were stored randomly.
 
-\section{Energy Grid Methods}
+A common requirement in Monte Carlo particle transport codes is that a parallel
+calculation should reproduce the same answers as a serial calculation ---
+without reproducibility, it would be difficult to debug or otherwise verify that
+modifications to the code do not cause errors. Thus, the process by which the
+$N$ source sites are sampled from the $M$ fission bank sites has to be done in a
+reproducible manner. Similarly the order of the source bank sites from one
+generation to the next should be the same as in a serial calculation. When an
+eigenvalue calculation is run in parallel, each process has its own source bank
+and fission bank and thus coordination is required between processes. The use of
+work scheduling algorithms wherein the mapping of source sites to processes is
+non-deterministic make maintaining reproducibility in a parallel calculation
+even more challenging.
 
-One critical aspect of the design of a continuous energy Monte Carlo particle
-transport code is how the continuous energy cross sections for each nuclide in
-the problem are stored as a function of energy. In the ENDF evaluation (and
-consequently the ACE format cross sections), each nuclide has cross sections
-tabulated at different energies. Some nuclides may only have a few points
-tabulated (e.g. H-1) whereas other nuclides may have hundreds or thousands of
-points tabulated (e.g. U-238).
+In \autoref{sec:master-slave}, we present an analysis of a master-slave parallel
+algorithm for fission source site sampling and redistribution and elucidate its
+limitations. In \autoref{sec:nearest-neighbor}, we introduce a novel algorithm
+with a nearest-neighbor communication pattern and present a theoretical analysis
+that confirms our intuition that it should scale better the master-slave
+algorithm. Both algorithms were implemented in OpenMC and measurements were
+taken to validate the theoretical analysis, the results of which are discussed
+in \autoref{sec:fission-bank-validation}.
 
-At each collision, it is necessary to sample the probability of having a
-particular type of interaction whether it be elastic scattering, (n,2n), level
-inelastic scattering, etc. this requires looking up the microscopic cross
-sections for these reactions for each nuclide within the target material. Since
-each nuclide has a unique energy grid, it would be necessary to search for the
-appropriate index for each nuclide at every collision. This can become a very
-time-consuming process. In fact, in the MCNP code (which does not have any type
-of unionized energy grid), energy grid searches may account for up to 30\% of
-the time spent in computation. Thus, there is a strong motive to implement a
-method of reducing the number of energy grid searches in order to speed up the
-calculation.
+% TODO: Finish discussion here.
 
-\subsection{Unionized Energy Grid}
+\section{Master-Slave Algorithm}
+\label{sec:master-slave}
 
-The most na\"{i}ve method to reduce the number of energy grid searches is to
-construct a new energy grid that consists of the union of the energy points of
-each nuclide and use this energy grid for all nuclides. This method is
-computationally very efficient as it only requires one energy grid search at
-each collision as well as one interpolation between cross section values since
-the interpolation factor can be used for all nuclides. However, it requires
-redundant storage of cross section values at points which were added to each
-nuclide grid. This additional burden on memory storage can become quite
-prohibitive. To lessen that burden, the unionized energy grid can be thinned
-with cross sections reconstructed on the thinned energy grid.
+Monte Carlo particle transport codes commonly implement an SPMD model by having
+one master process that controls the scheduling of work while the remaining
+processes wait to receive work from the master, process the work, and then send
+their results to the master at the end of the simulation. This idea is
+illustrated in \autoref{fig:master-slave}.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.8\textwidth]{figures/ch3/master-slave/master-slave.pdf}
+  \caption{Typical master-slave algorithm.}
+  \label{fig:master-slave}
+\end{figure}
+The most common parallel algorithm for fission source site sampling and
+redistribution also relies on the master process for coordination --- doing so
+makes it is easier to achieve reproducibility. In order to guarantee that the
+process by which fission sites are randomly sampled does not depend on the
+number of processors, the master-slave algorithm is typically implemented in the
+following manner \cite{lanl-x5-2008}:
+\begin{enumerate}
+\item Each slave process \emph{sends} its fission bank sites to the master
+  process. With $M$ fission sites in total distributed across the slave
+  processes, this step can be completed in $O(M)$ time. Since $E[M] = N$, this
+  implies that this step is $O(N)$.
+\item The master process sorts or orders the fission sites based on a unique
+  identifier. While a naïve sort would require $O(N \log N)$ steps on average,
+  Brown outlines a reordering algortihm in \cite{trans-brown-1992} that can
+  reduce this to $O(N)$.
+\item The master process samples $N$ fission sites from the ordered array of $M$
+  sites. This requires a loop over all fission sites and thus, by the same logic
+  as before, is $O(N)$.
+\item The master process \emph{broadcasts} all the fission sites to the slave
+  processes. Since each slave process does not need to keep every source site in
+  memory, one could modify the algorithm from a broadcast to a
+  \emph{scatter}. However, for practical reasons (e.g. work self-scheduling
+  \cite{lanl-brown-2005}), this is normally not done in production Monte Carlo
+  codes. This step is also, at best, $O(N)$ as we will see later.
+\end{enumerate}
+The first and last steps of this algorithm involve communication between the
+master and slave processes, whereas the second and third steps require
+computation only on the master process. However, each of these steps is $O(N)$
+at best. In practice, it is the network communication that becomes prohibitive
+and prevents scalability, so we will thus focus our efforts on analyzing the
+communication cost.
 
-This method is currently employed in the SERPENT Monte Carlo code [REF]. Users
-of SERPENT commonly run into memory issues when trying to run calculations in
-parallel since a copy of the cross sections has to be stored for each
-processor. This limits the number of processors that can be used on a single
-node when running in parallel.
+While the algorithmic complexity alone should tell us that this algorithm will
+not scale, it is instructive to look at a hypothetical example to understand how
+much communication is involved. Suppose that a calculation is run with $N =
+10,000,000$ neutrons across 64 processes. On average, $M = 10,000,000$ fission
+sites will be produced. If the data for each fission site consists of a spatial
+location (three 8 byte real numbers) and a unique identifier (one 8 byte
+integer), the memory required per site is 32 bytes. To broadcast 10,000,000
+source sites to 64 processes will thus require transferring over 20 GB of data.
 
-\subsection{Lethargy Mapping}
+To estimate the communication cost of the master-slave algorithm, we will
+introduce a simple latency-bandwidth model. In this model, we assume that the
+time that it takes to send a message between two processes is given by $\alpha +
+(dN)\beta$, where $\alpha$ is the time it takes to initiate the communication
+(latency), $\beta$ is the transfer time per unit of data (inverse bandwidth),
+$N$ is the number of fission sites, and $d$ is the size in bytes of each fission
+site.
 
-In the MC21 Monte Carlo code \cite{mc21}, to reduce the amount of work
-associated with energy grid searches, a lethargy map is created to limit the
-range of energies that must be searched for each nuclide. First, the maximum
-lethargy is calculated as
-\begin{equation}\label{eq:max-lethargy}
-  u_0 = \ln\frac{E_{max}}{E_{min}}.
+The first step of the master-slave algorithm is to send $p$ messages to the
+master process, each of size $dN/p$ on average. Thus, the total time to send
+these messages is
+\begin{equation}
+  \label{eq:t-send}
+  t_{\text{send}} = p\alpha + dN\beta.
 \end{equation}
-The entire energy range is then split into $N$ lethargy bins each of width
-$u_0/N$. For each nuclide, a map is created that relates the bounds of each
-lethargy bin to corresponding indices on the nuclide's energy grid.
+Generally, the best parallel performance is achieved in a weak scaling scheme
+where the total number of particles is proportional to the number of
+processors. However, we see that when $N$ is proportional to $p$, the time to
+send these messages increases proportionally with $p$.
+% TODO: Move the end portion?
 
-During each collision, the lethargy bin of the particle is given by
-\begin{equation}\label{eq:lethargy-bin}
-  i = 1 + \frac{N}{u_0}\ln\frac{E_{max}}{E}.
+Estimating the time of the broadcast is complicated by the fact that different
+MPI implementations may use different algorithms to perform collective
+communications. Worse yet, a single implementation may use a different algorithm
+depending on how many processes are communicating and the size of the
+message. Using multiple algorithms allows one to minimize latency for small
+messages and minimize bandwidth for long messages.
+
+We will focus here on the implementation of broadcast in the MPICH2
+implementation \cite{ijhpca-mpich-2005}. For short messages, MPICH2 uses a
+binomial tree algorithm. In this algorithm, the root process sends the data to
+one process in the first step, and then in the subsequent step, both the root
+and the other process can send the data to other processes. Thus, it takes a
+total of $\lceil \log_2 p \rceil$ steps to complete the communication where
+$\lceil x \rceil$ is the smallest integer not less than $x$. The time to
+complete the communication is
+\begin{equation}
+  t_{\text{short}} = \lceil \log_2 p \rceil \left ( \alpha + dN\beta \right ).
 \end{equation}
-The lethargy map will then give the lower and upper bounds on the nuclide's
-energy grid for the given lethargy bin. The subsequent grid search is performed
-only over the limited energy range given by the bounds determined. The greater
-the number of lethargy bins, the faster the searches can be performed. The
-downside is that a greater number of lethargy bins necessitates a proportionally
-higher memory requirement.
+This algorithm works well for short messages since the latency term scales
+logarithmically with the number of processes. However, for long messages, an
+algorithm that has lower bandwidth has been proposed by Barnett et
+al. \cite{sc-barnett-1994} and implemented in MPICH2. Rather than using a
+binomial tree, the broadcast is divided into a scatter and an
+\emph{allgather}. The time to complete the scatter is $ \log_2 p \: \alpha +
+\frac{p-1}{p} N\beta$ using a binomial tree algorithm. The allgather is
+performed using a ring algorithm that completes in $(p-1) \alpha + \frac{p-1}{p}
+N\beta$. Thus, together the time to complete the broadcast is
+\begin{equation}
+  \label{eq:t-broadcast}
+  t_{\text{long}} = \left ( \log_2 p + p - 1 \right ) \alpha + 2 \frac{p-1}{p}
+  dN\beta.
+\end{equation}
+The fission bank data will generally exceed the threshold for switching from
+short to long messages (typically 8 kilobytes), and thus we will use the
+equation for long messages. Adding \eqref{eq:t-send} and \eqref{eq:t-broadcast},
+we find the total cost of communication for the master-slave algorithm to be
+\begin{equation}
+  \label{eq:t-master-slave}
+  t_{\text{master-slave}} = \left ( \log_2 p + 2p - 1 \right ) \alpha +
+  \frac{3p-2}{p} dN\beta.
+\end{equation}
+For large $N$, it stands to reason that the communication will be
+bandwidth-dominated. Based on the bandwidth term in \eqref{eq:t-master-slave},
+we see that the combined communication requires $O(N)$ time.
 
-\subsection{Unionized Energy Grid with Nuclide Pointers}
+\section{Nearest-Neighbor Algorithm}
+\label{sec:nearest-neighbor}
 
-While having a unionized grid that is used for all nuclides allows for very fast
-lookup of cross sections, the burden on memory is in many circumstances
-unacceptable. The OpenMC Monte Carlo code utilizes a method that allows for a
-single energy grid search to be performed at every collision while avoiding the
-redundant storage of cross section values. Instead of using the unionized grid
-for eveyr nuclide, the original energy grid of each nuclide is kept and a list
-of pointers (of the same length as the unionized energy grid) is constructed for
-each nuclide that gives the corresponding grid index on the nuclide grid for a
-given grid index on the unionized grid. One must still interpolate on cross
-section values for each nuclide since the interpolation factors will generally
-be different. Figure FIG illustrates this method.
+To reduce the amount of communication required in a fission bank synchronization
+algorithm, it is desirable to move away from the master-slave algorithm to a
+nearest-neighbor algorithm whereby each process communicates only with other
+processes that are logically adjacent in the network topology. This concept is
+illustrated in \autoref{fig:nearest-neighbor}.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/ch3/master-slave/nearest-neighbor.pdf}
+  \caption{Nearest-neighbor communication pattern.}
+  \label{fig:nearest-neighbor}
+\end{figure}
 
-\subsection{Memory Requirements}
+Since the source sites for each fission generation are sampled from the fission
+sites banked from the previous generation, it is common in the master-slave
+algorithm for a fission site to be banked on one process, sent back to the
+master, and finally sent back to the same process as a source site. As a result,
+much of the communication inherent in the master-slave algorithm is entirely
+unnecessary. By keeping the fission sites local, having each slave process
+sample fission sites, and sending sites between processes only as needed, one
+can cut down on most of the communication. One algorithm to achieve this is as
+follows:
+\begin{enumerate}
+\item An exclusive scan is performed on the number of sites banked, and the
+  total number of fission bank sites is broadcasted to all processes. By
+  picturing the fission bank as one large array distributed across multiple
+  processes, one can see that this step enables each process to determine the
+  starting index of fission bank sites in this array. Let us call the starting
+  and ending indices on the $i$th process $a_i$ and $b_i$, respectively;
+\item Each process samples sites at random from the fission bank using the same
+  starting seed. A separate array on each process is created that consists of
+  sites that were sampled local to that process, i.e. if the index of the
+  sampled site is between $a_i$ and $b_i$, it is set aside;
+\item If $a_i$ is less than $iN/p$ where $N$ is the total number of particles
+  per generation and $p$ is the number of processors, then send $iN/p - a_i$
+  sites to the left adjacent process. Similarly, if $a_i$ is greater than
+  $iN/p$, then receive $a_i - iN/p$ from the left adjacent process. This idea is
+  applied to the fission bank sites at the end of each process' array as
+  well. If $b_i$ is less than $(i+1)N/p$, then receive $(i+1)N/p - b_i$ sites
+  from the right adjacent process. If $b_i$ is greater than $(i+1)N/p$, then
+  send $b_i - (i+1)N/p$ sites to the right adjacent process. Thus, each process
+  sends/receives only two messages under normal circumstances.
+\end{enumerate}
 
-FILL.
+The following example illustrates how this algorithm works. Let us suppose we
+are simulating $N = 1,000$ particles distributed over four processes. For this
+example, it is instructive to look at the state of the fission bank and source
+bank at several points in the algorithm:
+\begin{enumerate}
+\item The beginning of a fission generation where each process has $N/p$ source
+  sites;
+\item The end of a fission generation where each process has accumulated fission
+  sites;
+\item After sampling, where each process has some amount of source sites usually
+  not equal to $N/p$;
+\item After redistribution, where each process again has $N/p$ source sites for
+  the next cycle.
+\end{enumerate}
+At the end of each fission generation, each process needs $N/p = 250$ fission
+bank sites to continue on the next generation. Suppose that process $p_0$
+produces 270 fission banks sites, $p_1$ produces 230, $p_2$ produces 290, and
+$p_3$ produces 250. After each process samples from its fission bank sites,
+let's assume that $p_0$ has 260 source sites, $p_1$ has 215, $p_2$ has 280, and
+$p_3$ has 255. Note that the total number of sampled sites is greater than
+1,000. In this case, the 10 extra sites at the end of the bank are simply
+discarded. For each process to have the same number of source sites, $p_0$ needs
+to send its right-most 10 sites to $p_1$, and $p_2$ needs to send its left-most
+25 sites to $p_1$ and its right-most 5 sites to $p_3$. A schematic of this
+example is shown in \autoref{fig:nearest-neighbor-example}. The data local to
+each process is given a different hatching, and the cross-hatched regions
+represent source sites that are communicated between logically adjacent process.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/ch3/algorithm_schematic/nearest-neighbor-example.pdf}
+  \caption{Example illustrating nearest-neighbor fission bank algorithm.}
+  \label{fig:nearest-neighbor-example}
+\end{figure}
+
+Determining the expected communication cost of the nearest-neighbor algorithm is
+not trivial due to the fact that the cost will be a function of how many fission
+sites are sampled on each process. If each process samples exactly $N/p$ sites,
+it would not be necessary to communicate any fission bank sites. However, if any
+one process samples more or less than $N/p$ sites, the deviation will result in
+communication between logically adjacent nodes. To determine the expected
+deviation, let us analyze the algorithm based on the fundamentals of the Monte
+Carlo process.
+
+The steady-state neutron transport equation for a multiplying medium can be
+written in the form of an eigenvalue problem \cite{nukleonik-lieberoth-1968},
+\begin{equation}
+  \label{eq:NTE}
+  S(\mathbf{r})= \frac{1}{k} \int F(\mathbf{r}' \rightarrow
+  \mathbf{r})S(\mathbf{r}')\: d\mathbf{r},
+\end{equation}
+where,
+\begin{align*}
+  \mathbf{r} = &\: \text{spatial coordinates of phase space} \\ S (\mathbf{r})=
+  &\: \text{source distribution defined as the expected number of neutrons}
+  \\ &\: \text{born from fission per unit phase-space volume at $\mathbf{r}$}
+  \\ F( \mathbf{r}' \rightarrow \mathbf{r})= &\: \text{expected number of
+    neutrons born from fission per unit} \\ &\: \text{phase space volume at
+    $\mathbf{r}$ caused by a neutron at $\mathbf{r}'$} \\ k = &\:
+  \text{eigenvalue}.
+\end{align*}
+The fundamental eigenvalue of Eq. \eqref{eq:NTE} is known as $k_{eff}$, but for
+simplicity we will simply refer to it as $k$.
+
+In a Monte Carlo eigenvalue calculation, the power iteration method is applied
+iteratively to obtain stochastic realizations of the source distribution and
+estimates of the $k$-eigenvalue. Let us define $\hat{S}^{(m)}$ to be the
+realization of the source distribution at fission generation $m$ and
+$\hat{\epsilon}^{(m)}$ be the deviation from the deterministic solution arising
+from the stochastic nature of the tracking process. We can write the stochastic
+realization in terms of the fundamental source distribution and the fluctuating
+component as \cite{ane-brissenden-1986}
+\begin{equation}
+  \label{eq:source}
+  \hat{S}^{(m)}(\mathbf{r})= N S(\mathbf{r}) + \sqrt{N}
+  \hat{\epsilon}^{(m)}(\mathbf{r}),
+\end{equation}
+where $N$ is the number of particle histories per generation. Without loss of
+generality, we shall drop the superscript notation indicating the generation as
+it is understood that the stochastic realization is at a particular
+generation. The expected value of the stochastic source distribution is simply
+\begin{equation}
+  E \left[ \hat{S}(\mathbf{r})\right] = N S (\mathbf{r})
+\end{equation}
+since $E \left[ \hat{\epsilon}(\mathbf{r})\right] = 0$. The noise in the source
+distribution is due only to $\hat{\epsilon}(\mathbf{r})$ and thus the variance
+of the source distribution will be
+\begin{equation}
+  \text{Var} \left[ \hat{S}(\mathbf{r})\right] = N \text{Var} \left[
+    \hat{\epsilon}(\mathbf{r}) \right].
+\end{equation}
+Lastly, the stochastic and true eigenvalues can be written as integrals over all
+phase space of the stochastic and true source distributions, respectively, as
+\begin{equation}
+  \label{eq:k_to_source}
+  \hat{k} = \frac{1}{N} \int \hat{S}(\mathbf{r}) \: d\mathbf{r} \quad \text{and}
+  \quad k = \int S(\mathbf{r}) \: d\mathbf{r},
+\end{equation}
+noting that $S(\mathbf{r})$ is $O(1)$ since the true source distribution is not
+a function of $N$ (see Nease et al. \cite{mc-nease-2009} for a thorough
+discussion). One should note that the expected value $k$ calculated by Monte
+Carlo power iteration (i.e. the method of successive generations) will be biased
+from the true fundamental eigenvalue of \eqref{eq:NTE} by $O(1/N)$
+\cite{ane-brissenden-1986}, but we will assume henceforth that the number of
+particle histories per cycle is sufficiently large to neglect this bias.
+
+With this formalism, we now have a framework within which we can determine the
+properties of the distribution of expected number of fission sites. The explicit
+form of the source distribution can be written as
+\begin{equation}
+  \hat{S}(\mathbf{r}) = \sum_{i=1}^{M} w_i \delta( \mathbf{r} - \mathbf{r}_i )
+\end{equation}
+where $\mathbf{r}_i$ is the spatial location of the $i$th fission site, $w_i$
+is the statistical weight of the fission site at $\mathbf{r}_i$ (i.e. the weight
+of the neutron entering into a fission reaction), and $M$ is the total number of
+fission sites. It is clear that the total weight of the fission sites is simply
+the integral of the source distribution. Integrating \eqref{eq:source} over all
+space, we obtain
+\begin{equation}
+  \int \hat{S}(\mathbf{r}) \: d\mathbf{r} = N \int S(\mathbf{r}) \: d\mathbf{r}
+  + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r} .
+\end{equation}
+Substituting the expressions for the stochastic and true eigenvalues from
+\eqref{eq:k_to_source}, we can relate the stochastic eigenvalue to the integral
+of the noise component of the source distribution as
+\begin{equation}
+  N\hat{k} = Nk + \sqrt{N} \int \hat{\epsilon}(\mathbf{r}) \: d\mathbf{r}.
+\end{equation}
+Since the expected value of $\hat{\epsilon}$ is zero, the expected value of its
+integral will also be zero. We thus see that the variance of the integral of the
+source distribution, i.e. the variance of the total weight of fission sites
+produced, is directly proportional to the variance of the integral of the noise
+component. Let us call this term $\sigma^2$ for simplicity:
+\begin{equation}
+  \text{Var} \left[ \int \hat{S}(\mathbf{r}) \: d\mathbf{r} \right ] = N
+  \sigma^2.
+\end{equation}
+The actual value of $\sigma^2$ will depend on the physical nature of the
+problem, whether variance reduction techniques are employed, etc. For instance,
+one could surmise that for a highly scattering problem, $\sigma^2$ would be
+smaller than for a highly absorbing problem since more collisions will lead to a
+more precise estimate of the source distribution. Similarly, using survival
+biasing should in theory reduce the value of $\sigma^2$.
+
+Let us now consider the case where the $N$ total histories are divided up evenly
+across $p$ processes. Since each process simulates $N/p$ histories, we can write
+the source distribution as
+\begin{equation}
+  \hat{S}_i(\mathbf{r})= \frac{N}{p} S(\mathbf{r}) + \sqrt{\frac{N}{p}}
+  \hat{\epsilon}_i(\mathbf{r}) \quad \text{for} \quad i = 1, \dots, p
+\end{equation}
+Integrating over all space and simplifying, we can obtain an expression for the
+eigenvalue on the $i$th process:
+\begin{equation}
+  \hat{k}_i = k + \sqrt{\frac{p}{N}} \int \hat{\epsilon}_i(\mathbf{r}) \:
+  d\mathbf{r}.
+\end{equation}
+It is easy to show from this expression that the stochastic realization of the
+global eigenvalue is merely the average of these local eigenvalues:
+\begin{equation}
+  \label{eq:average_k_as_sum}
+  \hat{k} = \frac{1}{p} \sum_{i=1}^p \hat{k}_i.
+\end{equation}
+As was mentioned earlier, at the end of each generation one must sample $N$
+sites from the $M$ sites that were created. Thus, the source for the next
+generation can be seen as the fission source from the current generation divided
+by the stochastic realization of the eigenvalue since it is clear from
+\eqref{eq:k_to_source} that $\hat{k} = M/N$. Similarly, the number of sites
+sampled on each process that will be used for the next generation is
+\begin{equation}
+  \label{eq:sites_per_node}
+  M_i = \frac{1}{\hat{k}} \int \hat{S}_i(\mathbf{r}) \: d\mathbf{r} =
+  \frac{N}{p} \frac{\hat{k}_i}{\hat{k}}.
+\end{equation}
+
+While we know conceptually that each process will under normal circumstances
+send two messages, many of these messages will overlap. Rather than trying to
+determine the actual communication cost, we will instead attempt to determine
+the maximum amount of data being communicated from one process to another. At
+any given generation, the number of fission sites that the $j$th process will
+send or receive ($\Lambda_j$) is
+\begin{equation}
+  \label{eq:Lambda}
+  \Lambda_j = \left | \sum_{i=1}^j M_i - \frac{jN}{p} \right |.
+\end{equation}
+Noting that $jN/p$ is the expected value of the summation, we can write the
+expected value of $\Lambda_j$ as the mean absolute deviation of the summation:
+\begin{equation}
+  E \left [ \Lambda_j \right ] = E \left [ \left | \sum_{i=1}^j M_i -
+    \frac{jN}{p} \right | \right ] = \text{MD} \left [ \sum_{i=1}^j M_i \right ]
+\end{equation}
+where $\text{MD}$ indicates the mean absolute deviation of a random
+variable. The mean absolute deviation is an alternative measure of variability.
+
+In order to ascertain any information about the mean deviation of $M_i$, we need
+to know the nature of its distribution. Thus far, we have said nothing of the
+distributions of the random variables in question. The total number of fission
+sites resulting from the tracking of $N$ neutrons can be shown to be normally
+distributed via the Central Limit Theorem (provided that $N$ is sufficiently
+large) since the fission sites resulting from each neutron are ``sampled'' from
+independent, identically-distributed random variables. Thus, $\hat{k}$ and $\int
+\hat{S} (\mathbf{r}) \: d\mathbf{r}$ will be normally distributed as will the
+individual estimates of these on each process.
+
+Next, we need to know what the distribution of $M_i$ in
+\eqref{eq:sites_per_node} is or, equivalently, how $\hat{k}_i / \hat{k}$ is
+distributed. The distribution of a ratio of random variables is not easy to
+calculate analytically, and it is not guaranteed that the ratio distribution is
+normal if the numerator and denominator are normally distributed. For example,
+if $X$ is a standard normal distribution and $Y$ is also standard normal
+distribution, then the ratio $X/Y$ has the standard Cauchy distribution. The
+reader should be reminded that the Cauchy distribution has no defined mean or
+variance. That being said, Geary \cite{jrss-geary-1930} has shown that, for the
+case of two normal distributions, if the denominator is unlikely to assume
+values less than zero, then the ratio distribution is indeed approximately
+normal. In our case, $\hat{k}$ absolutely cannot assume a value less than zero,
+so we can be reasonably assured that the distribution of $M_i$ will be normal.
+
+For a normal distribution with mean $\mu$ and distribution function $f(x)$, it
+can be shown that
+\begin{equation}
+  \int_{-\infty}^{\infty} f(x) \left | x - \mu \right | \: dx =
+  \sqrt{\frac{2}{\pi} \int_{-\infty}^{\infty} f(x) \left ( x - \mu \right )^2 \:
+    dx}
+\end{equation}
+by substituting the probability distribution function of a normal distribution
+for $f(x)$, making a change of variables, and integrating both sides. Thus the
+mean absolute deviation is $\sqrt{2/\pi}$ times the standard
+deviation. Therefore, to evaluate the mean absolute deviation of $M_i$, we need
+to first determine its variance. Substituting \eqref{eq:average_k_as_sum} in
+\eqref{eq:sites_per_node}, we can rewrite $M_i$ solely in terms of $\hat{k}_1,
+\dots, \hat{k}_p$:
+\begin{equation}
+  M_i = \frac{N \hat{k}_i}{\sum\limits_{j=1}^p \hat{k}_j}.
+\end{equation}
+Since we know the variance of $\hat{k}_i$, we can use the error propagation law
+to determine the variance of $M_i$:
+\begin{equation}
+  \text{Var} \left [ M_i \right ] = \sum_{j=1}^p \left ( \frac{\partial
+    M_i}{\partial \hat{k}_j} \right )^2 \text{Var} \left [ \hat{k}_j \right ] +
+  \sum\limits_{j \neq m} \sum\limits_{m=1}^p \left ( \frac{\partial
+    M_i}{\partial \hat{k}_j} \right ) \left ( \frac{\partial M_i}{\partial
+    \hat{k}_m} \right ) \text{Cov} \left [ \hat{k}_j, \hat{k}_m \right ]
+\end{equation}
+where the partial derivatives are evaluated at $\hat{k}_j = k$. Since
+$\hat{k}_j$ and $\hat{k}_m$ are independent if $j \neq m$, their covariance is
+zero and thus the second term cancels out. Evaluating the partial derivatives,
+we obtain
+\begin{equation}
+  \text{Var} \left [ M_i \right ] = \left ( \frac{N(p-1)}{kp^2} \right )^2
+  \frac{p\sigma^2}{N} + \sum_{j \neq i} \left ( \frac{-N}{kp^2} \right )^2
+  \frac{p\sigma^2}{N} = \frac{N(p-1)}{k^2p^2} \sigma^2.
+\end{equation}
+Through a similar analysis, one can show that the variance of $\sum_{i=1}^j M_i$
+is
+\begin{equation}
+  \text{Var} \left [ \sum_{i=1}^j M_i \right ] = \frac{Nj(p-j)}{k^2p^2} \sigma^2
+\end{equation}
+Thus, the expected amount of communication on process $j$, i.e. the mean
+absolute deviation of $\sum_{i=1}^j M_i$, is proportional to
+\begin{equation}
+  \label{eq:comm-cost}
+  E \left [ \Lambda_j \right ] = \sqrt{\frac{2Nj(p-j)\sigma^2}{\pi k^2p^2}}.
+\end{equation}
+This formula has all the properties that one would expect based on intuition:
+\begin{itemize}
+\item As the number of particle histories increases, the communication cost on
+  each process increases as well;
+\item If $p=1$, i.e. if the problem is run on only one process, the variance
+  will be zero. This reflects the fact that exactly $N$ sites will be sampled if
+  there is only one process.
+\item For $j=p$, the variance will be zero. Again, this says that when you sum
+  the number of sites from each process, you will get exactly $N$ sites.
+\end{itemize}
+We can determine the process that has the highest communication cost by
+differentiating \eqref{eq:comm-cost} with respect to $j$, setting it equal to
+zero, and solving for $j$. Doing so yields $j_{\text{max}} =
+p/2$. Interestingly, substituting $j = p/2$ in \eqref{eq:comm-cost} shows us
+that the maximum communication cost is actually independent of the number of
+nodes:
+\begin{equation}
+  \label{eq:nn-cost-max}
+  E \left [ \Lambda_{j_{\text{max}}} \right ] = \sqrt{ \frac{N\sigma^2}{2\pi
+      k^2}}.
+\end{equation}
+
+We can now proceed as before and estimate the communication time using the
+latency-bandwidth model. As discussed earlier, each process should send or
+receive only two messages, one to each of its neighbors. Since the largest
+message will occur on process $j_{\text{max}} = p/2$, we can use
+\eqref{eq:nn-cost-max} and \eqref{eq:t-send} to estimate the communication time
+for the nearest-neighbor algorithm as
+\begin{equation}
+  \label{eq:t-nearest-neighbor}
+  t_{\text{nearest-neighbor}} = 2\alpha + d\sqrt{\frac{2N\sigma^2}{\pi k^2}} \beta
+\end{equation}
+To compare the communication time of the two algorithms, we can assume that the
+message size is large enough that the communication will be bandwidth
+dominated. Dividing \eqref{eq:t-master-slave} by \eqref{eq:t-nearest-neighbor},
+we find that
+\begin{equation}
+  \frac{t_{\text{master-slave}}}{t_{\text{nearest-neighbor}}} = \frac{\left (
+    \log_2 p + 2p - 1 \right ) \alpha + \frac{3p-2}{p} dN\beta}{2\alpha +
+    d\sqrt{\frac{2N\sigma^2}{\pi k^2}} \beta} \approx \frac{ \left ( 3p - 2
+    \right ) k \sqrt{N\pi/2}}{ p\sigma }.
+\end{equation}
+In the limit of large $p$, this ratio becomes
+\begin{equation}
+  \lim_{p\rightarrow\infty}
+  \frac{t_{\text{master-slave}}}{t_{\text{nearest-neighbor}}} =
+  \sqrt{\frac{N\pi}{2}} \cdot \frac{3k}{\sigma}.
+\end{equation}
+
+\section{Validation of Theoretical Analysis}
+\label{sec:fission-bank-validation}
+
+To ensure that any assumptions made in the foregoing analysis are sound, several
+test cases were run to compare experimental results with the theoretical
+analysis using an implementation of the nearest-neighbor fission bank algorithm
+in OpenMC. The number of processes and particle histories for each case are
+shown in \autoref{tab:cases}.
+\begin{table}[ht!]
+  \centering
+  \caption{Four test cases for nearest-neighbor fission bank algorithm.}
+  \label{tab:cases}
+  \begin{tabular}{ c c c }
+    \toprule
+    Case & Processes ($p$) & Histories ($N$) \\ 
+    \midrule
+    1 & 8 & 80,000 \\
+    2 & 8 & 160,000 \\
+    3 & 16 & 80,000 \\
+    4 & 16 & 160,000 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+Each case was run for 10,000 generations and at the end of each run, the
+standard deviation of the number of fission bank sites sent to logically
+adjacent processes was determined for each process as a proxy for the
+communication cost. For Case 1, the data were fit to the following function
+(with the same dependence on $j$ and $p$ as in \eqref{eq:comm-cost}) using a
+least squares regression:
+\begin{equation}
+  \label{eq:regression}
+  f(j,p,\beta) = \frac{\beta}{p} \sqrt{j(p-j)}.
+\end{equation}
+The fitting coefficient $\beta$ was then used to predict the expected amount of
+communication for the other three cases. \autoref{fig:mean-deviance8} shows the
+expected number of fission bank sites sent or received from neighboring
+processes, $E \left [ \Lambda_j \right ]$, for Cases 1 and 2 along with the
+least squares regression fit based on \eqref{eq:regression} for Case 1 and the
+prediction for Case 2. \autoref{fig:mean-deviance16} shows the expected number
+of fission bank sites sent or received from neighboring processes for Cases 3
+and 4 along with the predicted fits.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.75\textwidth]{figures/ch3/mean_deviance/plot8.pdf}
+  \caption{Expected number of fission bank sites sent to neighboring nodes using
+    8 compute nodes}
+  \label{fig:mean-deviance8}
+\end{figure}
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.75\textwidth]{figures/ch3/mean_deviance/plot16.pdf}
+  \caption{Expected number of fission bank sites sent to neighboring nodes using
+    16 compute nodes}
+  \label{fig:mean-deviance16}
+\end{figure}
+A few observations can be made from these figures. Firstly, the data from the
+four test cases demonstrates that the foregoing theoretical analysis is indeed
+correct. Furthermore, one can observe from these two figures that the maximum
+communication does occur for node $j_{\text{max}} = p/2$ and that this maximum
+is indeed independent of $p$ as predicted.
+
+It is also instructive to check our assumption that $\sum_{i=1}^j M_i$ is
+normally distributed. One way of doing this is through a quantile-quantile (Q-Q)
+plot, comparing the observed quantiles of the data with the theoretical
+quantiles of the normal distribution. If the data are normally distributed, the
+points on the Q-Q plot should lie along a line. \autoref{fig:QQ-plot} shows a
+Q-Q plot for the number of fission bank sites sent or received on the first node
+for the Case 1.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.75\textwidth,angle=-90]{figures/ch3/QQ_plot/QQplot.pdf}
+  \caption{Q-Q plot of $M_1$ for Case 1}
+  \label{fig:QQ-plot}
+\end{figure}
+The data clearly lie along a straight line and thus the data are normally
+distributed. This conclusion was also confirmed using the Shapiro-Wilk test for
+normality \cite{biometrika-shapiro-1965}.
+
+\subsection{Comparison of Communication Costs}
+
+To fully appreciate what this means, we can infer values of $\sigma$ and $k$
+from the aforementioned test cases to determine what the ratio actually
+is. Recall that $\sigma$ tells us how much stochastic noise there is in the
+integrated fission source. The sample standard deviation for our validation
+cases was $\sigma = 1.73$. Using this value and $k = 1$, we estimate that the
+novel algorithm would be about 2,000 times faster than the traditional algorithm
+for $N = 1,000,000$. Also note that as $N$ increases, the novel algorithm will
+outperform the traditional algorithm by an even wider margin.
+
+To determine the actual performance of the novel algorithm relative to the
+traditional algorithm, both algorithms were implemented in the aforementioned
+simple Monte Carlo code. A separate simulation using each of the algorithms was
+run from a single compute node up to 88 compute nodes in parallel. In each case,
+the number of histories was 40,000 times the number of compute nodes so that
+each compute node simulates the same number of histories. Each simulation was
+run for 20 cycles. \autoref{fig:algorithm-time} shows the total time spent on
+fission bank synchronization for the traditional and novel algorithms.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.75\textwidth]{figures/ch3/algorithm_results/time.pdf}
+  \caption{Execution time for fission bank algorithms}
+  \label{fig:algorithm-time}
+\end{figure}
+We see that the performance of the novel algorithm doesn't quite meet the
+predicted performance based on the above analysis, but this is not surprising
+given the number of simplifying assumptions made in the course of the
+analysis. Most importantly, we have ignored the time spent sampling fission
+sites and copying data in memory which may become non-negligible for large
+$N$. Notwithstanding, the new algorithm performs nearly two orders of magnitude
+faster than the traditional algorithm for large $p$ and large $N$.
+
+\section{Other Considerations}
+\label{sec:other}
+
+A discussion of any parallel algorithm for Monte Carlo codes would not be
+complete without considering how to achieve high parallel efficiency on
+heterogeneous architectures and how to maintain reproducibility of results. In
+this section, we will discuss how load balancing requirements may affect the
+proposed algorithm and reproducibility as well as briefly mentioning the impact
+of fault tolerance.
+
+\subsection{Load Balancing}
+\label{load-balancing}
+
+One important requirement for a parallel Monte Carlo calculation is proper
+load-balancing, i.e. it is undesirable to have a compute node sitting idle with
+no work to do while other compute nodes are still busy working. This is
+especially the case when the hardware architecture is heterogeneous (having
+different types of processors in a single cluster). In the traditional parallel
+algorithm, work self-scheduling is achieved by having each slave node request
+small batches of work from the master, and as each batch is completed, the slave
+may request more work. By breaking up the problem into smaller batches, this
+ensures that in a single source iteration, a processor that is twice as fast as
+another processor will also be assigned twice as many histories to compute, and
+thus all processors should finish their work at approximately the same time
+(assuming that the time to complete a single history is constant irrespective of
+its properties).
+
+The novel algorithm we have presented here precludes the use of the
+aforementioned self-scheduling algorithm since an important aspect of the
+algorithm is to assign histories sequentially to the nodes to preserve their
+order. It should be noted that if one did not care to preserve reproducibility
+in a calculation, the self-scheduling scheme could easily be applied for
+load-balancing with the new fission bank algorithm.
+
+When used on a homogeneous cluster, we don't foresee a great loss in efficiency
+due to the lack of load balancing in the novel algorithm. Studies using MCNP on
+a homogeneous Linux cluster have shown a 5-10\% loss in parallel efficiency when
+not using any sort of load balancing \cite{lanl-brown-2005}.
+
+It is also possible to employ a basic means of load balancing for heterogeneous
+architectures in the fission bank algorithm presented here by ``tuning'' the
+algorithm to the specific characteristics of the cluster. If one were to measure
+the performance of each type of processor on the cluster in terms of particles
+processed per second, the number of histories on each processor could be
+adjusted accordingly instead of merely distributing particles uniformly ($N/p$
+on each processor).
+
+\subsection{Ordering of the Fission Bank}
+
+The order of the fission sites produced at the end of a source iteration will
+depend on the order in which the particle histories were processed. Thus, if a
+calculation is run in parallel using the master-slave load balancing scheme
+described above, the order of the fission sites is not guaranteed to be
+reproducible since the order in which the particle histories are simulated will
+depend on the actions of independent processors. It is thus necessary to sort or
+re-order the fission sites since the sampling of source sites depends on this
+ordering in order to obtain a reproducible result.
+
+A traditional sorting of the fission bank would be done using a standard
+quicksort that can be completed in $O(N \log N)$ steps. Brown and Sutton
+developed a method of re-ordering the fission sites that can be done in $O(N)$
+steps \cite{trans-brown-1992}. Anecdotally, we have observed that in systems
+using a high-speed network interconnect such as InfiniBand, the sorting of the
+fission bank is the major contributor to decreased parallel efficiency in
+fission bank synchronization.
+
+Using the fission bank algorithm we have developed herein, the order in which
+particle histories are processed is always the same since we simply allocate the
+first set of $N/p$ particles to the first processor, the second set of $N/p$
+particles to the second processor, etc. Thus, it is not necessary to sort or
+re-order the fission bank in order to preserve reproducibility of results.
+
+\subsection{Fault Tolerance}
+
+On a parallel architecture with a large number of processors, network
+interconnects, hard disks, and memory, it is desirable to have some means of
+fault tolerance to ensure that not all results are lost in the event of a
+hardware failure. In current Monte Carlo codes, this can be achieved by having
+the slave nodes periodically rendezvous and having a single processor dump data
+to a file that can be used to restart the run. While providing insurance against
+lost simulation time, performing fault tolerance this way unfortunately degrades
+parallel performance since it entails collective communication between all
+processors. Notwithstanding, the algorithm we have presented here does not
+inhibit the use of fault tolerance in this manner.
+
+\section{Performance Testing}
+
+Evaluating the performance of any parallel algorithm is made difficult by the
+fact that there are a vast number of factors which may affect parallel
+performance. For example, running a simulation on very slow processors may yield
+very good parallel scaling whereas the same simulation run on fast processors
+may show poor parallel scaling due merely to the relative amount of computation
+and communication. Monte Carlo criticality calculations have shown reasonable
+parallel performance on multi-core desktop and moderately sized
+clusters. However, to date, no one has demonstrated parallel scaling past a few
+hundred processors.
+
+To determine the actual performance of the novel algorithm, it was implemented
+in the OpenMC Monte Carlo code \cite{ane-romano-2013}. A simple model was then
+constructed and simulated on the Jaguar XT5 supercomputer at the National Center
+for Computational Sciences and Oak Ridge National Laboratory. The Jaguar XT5
+contains 18,688 compute nodes, each with dual hex-core AMD Opteron 2435
+processors running at 2.6 GHz. In total, there are over 200,000 total processors
+available.
+
+A weak parallel scaling scheme was run with a fixed number of particles per
+processor. The base case was run with 960 processors running 160,000,000
+particles per cycle. Then, each successive run doubled the number of processors
+and particles. The last case was run with 15,360 processors running 2.56 billion
+particles per history. \autoref{fig:jaguar-scaling} shows the near-linear
+parallel scaling of OpenMC with the novel fission bank algorithm up to 15,360
+processors.
+\begin{figure}[ht!]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/ch3/jaguar_results/jaguar.pdf}
+  \caption{Parallel speedup on Jaguar XT5 supercomputer.}
+  \label{fig:jaguar-scaling}
+\end{figure}
+Note that with 15,360 processors, the code is simulating about 600 million
+particle histories per second.
+
+\section{Conclusions}
+\label{sec:conclusions}
+
+We have presented a new method for parallelizing the source iterations in a
+Monte Carlo criticality calculation. This algorithm takes advantage of the fact
+that many of the fission sites produced on one processor can be used as source
+sites on that same processor and avoids unnecessary communication between
+processors.
+
+Analysis of the algorithm shows that it should outperform existing algorithms
+for fission bank synchronization and that furthermore, the performance gap
+increases for an increasing number of histories or processors. Test results on a
+simple 3D structured mesh Monte Carlo code confirm this finding. The analysis
+also shows that the maximum amount of communication in the algorithm is
+independent of the number of processors and instead will depend on the number of
+histories per cycle and the physical characteristics of the problem at
+hand. Again, testing using our simple Monte Carlo code confirm this prediction.
+
+The reader should keep in mind that while the algorithm presented here will
+significantly improve the time necessary to sample and distribute fission sites
+between cycles, it has no effect on the actual transport simulation of particles
+moving through a geometry. Thus, it will not improve smaller simulations that
+would typically run on a workstation. However, for large simulations that
+necessitate the use of a large cluster or supercomputer to complete in a
+reasonable amount of time, this novel algorithm will improve the parallel
+efficiency and is an important step in achieving scalability up to thousands of
+processors.
+
+Potential shortcomings of the present algorithm include the inability to provide
+load balancing using existing algorithms for heterogeneous computer
+architectures. A basic method to provide load balancing in such situations based
+on ``tuning'' the algorithm was suggested, although it has not be tested as of
+yet.
+
+% TODO: Discussion of arbitrarily good scaling
+
+% TODO: Impact of Shannon entropy
+
+% TODO: Non-blocking versus blocking
+
+% TODO: Discarding last sites
