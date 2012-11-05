@@ -9,7 +9,7 @@ are interested in the distribution of power and other reaction rates at each
 point in a nuclear reactor; medical physicists are interested in energy
 deposition in the human body due to radiation treatments; nuclear
 astrophysicists are interested in how nuclear reactions can produce elements
-heavier than than hydrogen in stars; and so on. In order to determine such
+heavier than hydrogen in stars; and so on. In order to determine such
 quantities, one generally needs knowledge of two things:
 \begin{enumerate}
 \item An understanding of how individual particles interact with the matter
@@ -24,23 +24,23 @@ respect to the scattering of particles, a subject which can not be understood
 well without considering quantum effects. The latter subject, i.e. the theory of
 particle transport, came to maturity in the middle and later parts of the 20th
 century, with many advances coming from the nuclear reactor engineering
-community which was focused on studying the behavior of fission systems.
+community which was focused on studying the behavior of fissile systems.
 
-The physical process of particle transport is itself a stochastic,
-non-deterministic process. A free particle moving through a medium, after being
-born from some nuclear, chemical, or other process, will have a trajectory
-consisting of a number of successive random steps (a random walk). At the end of
-this random walk, the particle is absorbed, transmuted, or otherwise ``killed''.
-To cast the problem into a strictly mathematical form, it is necessary to make a
-continuum hypothesis. This hypothesis implies that the particle density is high
-enough such that over the length scales (be it in space, energy, or time) one is
-interested in, the average behavior of particles will be observed. In certain
-situations, e.g. a reactor operating at very low power, the continuum hypothesis
-may not be valid, and the actual behavior of particles at any given point in
-phase space may deviate significantly from its average. However, for most
-practical cases of interest in nuclear engineering, the particle densities are
-indeed high enough to justify the continuum hypothesis. The equation that
-results from this hypothesis is known as the Boltzmann transport equation.
+The physical transport of particles is stochastic and non-deterministic; a free
+particle moving through a medium, after being born from some nuclear, chemical,
+or other process, will have a trajectory consisting of a number of successive
+random steps (a random walk). At the end of this random walk, the particle is
+absorbed, transmuted, or otherwise ``killed''.  To cast the problem into a
+strictly mathematical form, it is necessary to make a continuum hypothesis. This
+hypothesis implies that the particle density is high enough such that over the
+length scales (be it in space, energy, or time) one is interested in, the
+average behavior of particles will be observed. In certain situations, e.g. a
+reactor operating at very low power, the continuum hypothesis may not be valid,
+and the actual behavior of particles at any given point in phase space may
+deviate significantly from its average. However, for most practical cases of
+interest in nuclear engineering, the particle densities are indeed high enough
+to justify the continuum hypothesis. The equation that results from this
+hypothesis is known as the Boltzmann transport equation.
 
 There are two fundamentally different approaches for determining the
 distribution of particles in a system:
@@ -72,18 +72,22 @@ characteristics \cite{physor-smith-2002}.
 
 In this thesis, we will focus specifically on the transport of neutrons through
 a multiplying (fissionable) medium --- a topic that is central to the study of
-energy production in nuclear reactors. More specifically, the solution of the
-neutron transport equation via Monte Carlo methods will be studied in the
-context of massively parallel simulations on supercomputers. Neutron transport
-has a few desirable characteristics. Neutrons, being neutral particles, are
-generally not subject to external forces when traveling between
-collisions. Moreover, it is not necessary to consider collisions between
-neutrons since the density of the host medium is generally much greater than the
-density of neutrons\footnote{Another way of thinking about this is that the
-  particles and the host medium can be considered mutually exclusive.}. This
-property enables the simulation of neutrons via Monte Carlo methods to be
-parallelized quite easily since the trajectory of each particle is completely
-independent of all others.
+energy production in nuclear reactors. When a fissionable medium is present, a
+source of neutrons is introduced that is itself proportional to the neutron
+population. As a result, the steady-state neutron transport equation is
+generally solved as an eigenvalue equation where the eigenvalue represents a
+scaling factor on the fission source that forces the equation to balance. More
+specifically, the solution of the neutron transport equation via Monte Carlo
+methods will be studied in the context of massively parallel simulations on
+supercomputers. Neutron transport has a few desirable characteristics. Neutrons,
+being neutral particles, are generally not subject to external forces when
+traveling between collisions. Moreover, it is not necessary to consider
+collisions between neutrons since the density of the host medium is generally
+much greater than the density of neutrons\footnote{Another way of thinking about
+  this is that the particles and the host medium can be considered mutually
+  exclusive.}. This property enables the simulation of neutrons via Monte Carlo
+methods to be parallelized quite easily since the trajectory of each particle is
+completely independent of all others.
 
 \section{History of Parallel Algorithms}
 
@@ -217,10 +221,10 @@ axial direction and a Bessel distribution in the radial direction. All materials
 in the problem are also specified to use cross sections at a single
 temperature. Nevertheless, even this simplified problem is computationally
 challenging due to the number of unknowns to be solved for. In this benchmark,
-the aim is compute the power distribution for every fuel pin subdivided into 100
-evenly spaced axial nodes (note that the 10 radial rings originally specified by
-Smith were not included). With 264 fuel pins in each assembly and 241
-assemblies, this means there are 6,362,400 unique regions that need to be
+the aim is to compute the power distribution for every fuel pin subdivided into
+100 evenly spaced axial nodes (note that the 10 radial rings per pin originally
+specified by Smith were not included). With 264 fuel pins in each assembly and
+241 assemblies, this means there are 6,362,400 unique regions that need to be
 tallied over.
 
 At the PHYSOR 2010 conference, Kelly et al. presented the first credible
@@ -271,30 +275,32 @@ hours on 750 processor cores.
 
 \subsection{MIT PWR Benchmark}
 
-% TODO: Enhance this section based on specification from Nick.
-
 The introduction of the NEA Monte Carlo performance benchmark was an important
 first step in encouraging the Monte Carlo community to start addressing problems
 related to the ability to perform full-core simulations. The analyses by Kelly
 et al. and Leppänen have shown that obtaining a solution is indeed possible
 given the availability of large computing resources. However, as previously
 mentioned, the benchmark model contains many model simplifications that make the
-problem unrealistic. To move towards simulation of actual reactor models, MIT is
-currently developing a PWR full-core benchmark that includes details and
-dimensions from an actual operating PWR plant. Many of the simplifications that
-were present in the NEA Monte Carlo performance benchmark are not part of the
-MIT benchmark. Some of the details that are present in the MIT benchmark
-include:
-\begin{itemize}
-\item Radial and axial enrichment zoning;
-\item Burnable absorbers;
-\item Grid spacers;
-\item Core support;
-\item Core Baffle;
-\item Ex-core neutron shields.
-\end{itemize}
-This level of detail and complexity in the MIT benchmark will only exacerbate
-the challenges encountered when simulating the Monte Carlo performance benchmark
+problem unrealistic.
+
+To move towards simulation of actual reactor models, MIT is currently developing
+a PWR full-core benchmark that includes details and dimensions from an actual
+operating PWR plant. Many of the simplifications that were present in the NEA
+Monte Carlo performance benchmark are not part of the MIT benchmark; features
+that are explicitly modeled include radial enrichment zoning, guide tubes and
+instrument tubes, burnable absorbers and control rods, grid spacers, core
+support, core baffle, core barrel, thermal shield pads, and the reactor pressure
+vessel. A geometry plot of the benchmark model is shown in
+\autoref{fig:mit-pwr-benchmark}.
+\begin{figure}[htb]
+  \centering
+  \includegraphics[width=4.0in]{figures/ch1/mit-pwr-benchmark.png}
+  \caption{Geometry plot of a preliminary model of the MIT PWR Benchmark
+    generated with the OpenMC Monte Carlo code.}
+  \label{fig:mit-pwr-benchmark}
+\end{figure}
+The level of detail and complexity in the MIT benchmark will only exacerbate the
+challenges encountered when simulating the Monte Carlo performance benchmark
 including high memory requirements, poor source convergence, and the requirement
 to run possibly trillions of particles to reach convergence of local tallies.
 
@@ -310,10 +316,11 @@ al. \cite{physor-kelly-2012} showed that even for the simplified NEA Monte Carlo
 performance benchmark, 200 billion active neutron histories were required to
 converge the local tallies. To accurately model changes in material compositions
 due to depletion, it is likely that as many as 500 axial nodes will be required
-instead of 100; on top of that, 10 radial rings may be necessary. Thus, assuming
-the number of particles needed to reach the desired uncertainty criterion scales
-with the number of tally regions, we would need $200 \cdot 10^9 \times 5 \times
-10 = 10 \cdot 10^{12}$, or ten trillion, neutrons to fully converge all tallies.
+instead of 100; on top of that, 10 radial rings per pin may be necessary. Thus,
+assuming the number of particles needed to reach the desired uncertainty
+criterion scales with the number of tally regions, we would need $200 \cdot 10^9
+\times 5 \times 10 = 10 \cdot 10^{12}$, or ten trillion, neutrons to fully
+converge all tallies.
 
 Barring a huge increase in the efficiency of single processor cores, the
 expedient solution of a full-core reactor problem will in turn require millions
@@ -373,6 +380,7 @@ will not impede the successful implementation of scalable parallel
 algorithms. As such, it is not explored in this thesis.
 
 \subsection{Cross Section Memory Requirements}
+\label{sec:cross-section-memory}
 
 One of the simplifications in the NEA Monte Carlo performance benchmark is that
 all materials are to be treated at the same temperature. This was done for
@@ -387,15 +395,16 @@ question was studied in some depth by Trumbull \cite{nt-trumbull-2006}. He
 concluded that for many nuclides, cross sections would need to be stored at
 increments of less than 28 K. Assuming that even a 28 K interval were
 sufficient, this means that over the range of temperatures found in a
-light-water reactor (typically 293 K up to 811 K), cross sections would be
-needed at 18 different temperatures. Thus, potentially tens or hundreds of GB of
-memory are needed to accommodate cross sections for a truly
-temperature-dependent model. The reader should once again recall that, in the
-standard SPMD parallel model, this memory requirement is to be multiplied by the
-number of processes used in the simulation. It is thus anticipated that special
-techniques will need to be employed in order to perform massively-parallel
-full-core LWR simulations given that the memory requirements will almost
-certainly exceed the available node memory.
+light-water reactor (typically 293 K up to at least 1300 K for steady state
+calculations and 2500 K for transients), cross sections would be needed at over
+75 different temperatures. Thus, potentially hundreds of GB of memory are needed
+to accommodate cross sections for a truly temperature-dependent model. The
+reader should once again recall that, in the standard SPMD parallel model, this
+memory requirement is to be multiplied by the number of processes used in the
+simulation. It is thus anticipated that special techniques will need to be
+employed in order to perform massively-parallel full-core LWR simulations given
+that the memory requirements will almost certainly exceed the available node
+memory.
 
 Two solutions for reducing cross section memory requirements have thus far been
 proposed. The first method is known as on-the-fly Doppler broadening
@@ -412,18 +421,19 @@ expansion coefficients.
 
 Another method that may potentially solve the cross section memory requirements
 is the work of Viitanen on explicit temperature treatment
-\cite{nse-viitanen-2012}. This method would enable simulation using 0 K cross
-sections via a rejection technique based on Woodcock delta tracking. The
-downside is that the method may incur a performance penalty. However, from the
-perspective of massively parallel simulations, the trade-off of a slower
-calculational rate in return for drastically reduced memory requirement is quite
-tolerable. It is often said that ``flops are free'' \cite{sc-panel-2009}; on the
-other hand, memory is an increasingly scarce resource for high fidelity
-simulations. Given that excellent progress has been made towards reducing cross
-section memory requirements, it is a topic that will not be further explored as
-part of the current work.
+\cite{nse-viitanen-2012, physor-viitanen-2012}. This method would enable
+simulation using 0 K cross sections via a rejection technique based on Woodcock
+delta tracking. The downside is that the method may incur a performance
+penalty. However, from the perspective of massively parallel simulations, the
+trade-off of a slower calculational rate in return for drastically reduced
+memory requirement is quite tolerable. It is often said that ``flops are free''
+\cite{sc-panel-2009}; on the other hand, memory is an increasingly scarce
+resource for high fidelity simulations. Given that excellent progress has been
+made towards reducing cross section memory requirements, it is a topic that will
+not be further explored as part of the current work.
 
 \subsection{Tally Memory Requirements}
+\label{sec:tally-memory}
 
 Kelly et al. \cite{physor-kelly-2012} found that the memory required in their
 simulation of the Monte Carlo performance benchmark was so large that they were
@@ -454,9 +464,13 @@ within each fuel pin for depletion purposes, the total number of depletable
 materials would be 254,760,000. With approximately 300 nuclides and six reaction
 rates needed for each nuclide, the total memory for tallies would be
 $254,760,000 \times 300 \times 6 \times 24 \text{ bytes} = 11,005,632,000,000$
-bytes or \textbf{11 terabytes}. Again, in the SPMD parallel model, this amount
-of memory would be required for each process. This is clearly a major problem
-and one that has no easy resolution.
+bytes\footnote{We have chosen the last multiplier as 24 bytes for the following
+  reason; for each tally bin we need to store the accumulated sum, the
+  accumulated sum of squares, and also a temporary variable that is used for a
+  single batch. Thus there are three 8-byte floating point numbers.} or
+\textbf{11 terabytes}. Again, in the SPMD parallel model, this amount of memory
+would be required for each process. This is clearly a major problem and one that
+has no easy resolution.
 
 One of the primary objectives of this thesis is to study algorithms for
 decomposing tally memory and provide guidance on the best path going forward for
@@ -513,6 +527,17 @@ beneficial from the perspective of maintaining good load balancing, they can
 also unfortunately create a bottleneck at the master process. In practice, poor
 scaling can result from two distinct algorithms:
 \begin{enumerate}
+\item \emph{Fission source synchronization} --- in an eigenvalue calculation, it
+  is necessary to iterate over the fission source to obtain a converged
+  distribution. During each fission source iteration, source sites are generated
+  as fission occurs and are stored in an array called the \emph{fission
+    bank}. As the generation of these sites is stochastic, we may end up with
+  fewer or more sites than particles requested per source iteration. Thus the
+  specified number of sites must be sampled from the fission bank. Common
+  implementations rely on a single master processor to
+  sort/re-order\footnote{This is done for the sake of maintaining
+    reproducibility, which is discussed at length in
+    \autoref{chap:fission-bank}.}, sample, and redistribute all source sites.
 \item \emph{Tally reduction} --- in many Monte Carlo codes, each process
   responsible for tracking particles accumulates its own estimates of the tally
   random variables. At the end of every realization, these estimates are added
@@ -523,15 +548,6 @@ scaling can result from two distinct algorithms:
   eigenvalue calculations, but is only a problem when many tally bins are
   used. We saw earlier that for realistic reactor calculations, terabytes of
   memory corresponding to many billions of tally bins would be necessary.
-\item \emph{Fission source synchronization} --- in an eigenvalue calculation, it
-  is necessary to iterate over the fission source to obtain a converged
-  distribution. During each fission source iteration, source sites are generated
-  as fission occurs and are stored in an array called the \emph{fission
-    bank}. As the generation of these sites is stochastic, we may end up with
-  fewer or more sites than particles requested per source iteration. Thus the
-  specified number of sites must be sampled from the fission bank. Common
-  implementations rely on a single master processor to sort/re-order, sample,
-  and redistribute all source sites.
 \end{enumerate}
 For the time being, we will defer further discussion regarding these algorithms
 to the chapters where they are analyzed thoroughly. However, we remark that not
@@ -575,7 +591,7 @@ traditional parallel fission bank algorithm used in Monte Carlo eigenvalue
 calculations as well as a novel algorithm based on nearest-neighbor exchanges of
 source sites. The novel algorithm is implemented in the OpenMC Monte Carlo code
 and tested to validate the theoretical analysis. Finally, possible concerns
-including load balancing, ordering of the fission bank, and fault tolerance and
+including load balancing, ordering of the fission bank, and fault tolerance are
 discussed.
 
 In \autoref{chap:tally-reduction}, we begin by demonstrating why reducing
@@ -594,15 +610,14 @@ terms of simple machine characteristics, material characterizations, and initial
 particle distributions. Important limitations for domain decomposed simulations
 are identified and discussed based on the upper bound penalties.
 
-
 In \autoref{chap:data-decomp}, an algorithm for decomposing large tally data in
 Monte Carlo particle simulations is developed, analyzed and implemented in
 OpenMC. The algorithm is based on a non-overlapping decomposition of compute
-nodes into tracking processors and tally servers. The former are used simulate
-the movement of particles through the domain while the latter continuously
-receive and update tally data. A performance model for this approach is
-developed, showing that, for a range of parameters relevant to LWR analysis, the
-tally server algorithm should perform with minimal overhead on contemporary
-supercomputers. An implementation of the algorithm in OpenMC is then tested on
-the Intrepid and Titan supercomputers, supporting the key predictions of the
-model over a wide range of parameters.
+nodes into tracking processors and tally servers. The former are used to
+simulate the movement of particles through the domain while the latter
+continuously receive and update tally data. A performance model for this
+approach is developed, showing that, for a range of parameters relevant to LWR
+analysis, the tally server algorithm should perform with minimal overhead on
+contemporary supercomputers. An implementation of the algorithm in OpenMC is
+then tested on the Intrepid and Titan supercomputers, supporting the key
+predictions of the model over a wide range of parameters.

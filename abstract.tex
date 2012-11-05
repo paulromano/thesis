@@ -1,0 +1,42 @@
+\begin{abstractpage}
+Monte Carlo particle transport methods are being considered as a viable option
+for high-fidelity simulation of nuclear reactors. While Monte Carlo methods
+offer several potential advantages over deterministic methods, there are a
+number of algorithmic shortcomings that would prevent their immediate adoption
+for full-core analyses. In this thesis, algorithms are proposed both to
+ameliorate the degradation in parallal efficiency typically observed for large
+numbers of processors and to offer a means of decomposing large tally data that
+will be needed for reactor analysis.
+
+A nearest-neighbor fission bank algorithm was proposed and subsequently
+implemented in the OpenMC Monte Carlo code. A theoretical analysis of the
+communication pattern shows that the expected cost is $O(\sqrt{N})$ whereas
+traditional fission bank algorithms are $O(N)$ at best. The algorithm was tested
+on two supercomputers, the Intrepid Blue Gene/P and the Titan Cray XK7, and
+demonstrated nearly linear parallel scaling up to 163,840 processor cores on a
+full-core benchmark problem.
+
+An algorithm for reducing network communication arising from tally reduction was
+analyzed and implemented in OpenMC. The proposed algorithm groups only particle
+histories on a single processor into batches for tally purposes --- in doing so
+it prevents all network communication for tallies until the very end of the
+simulation. The algorithm was tested, again on a full-core benchmark, and shown
+to reduce network communication substantially.
+
+A model was developed to predict the impact of load imbalances on the
+performance of domain decomposed simulations. The analysis demonstrated that
+load imbalances in domain decomposed simulations arise from two distinct
+phenomena: non-uniform particle densities and non-uniform spatial leakage. The
+dominant performance penalty for domain decomposition was shown to come from
+these physical effects rather than insufficient network bandwidth or high
+latency. The model predictions were verified with measured data from simulations
+in OpenMC on a full-core benchmark problem.
+
+Finally, a novel algorithm for decomposing large tally data was proposed,
+analyzed, and implemented/tested in OpenMC. The algorithm relies on disjoint
+sets of compute processes and tally servers. The analysis showed that for a
+range of parameters relevant to LWR analysis, the tally server algorithm should
+perform with minimal overhead. Tests were performed on Intrepid and Titan and
+demonstrated that the algorithm did indeed perform well over a wide range of
+parameters.
+\end{abstractpage}

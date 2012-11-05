@@ -19,7 +19,12 @@ In early 2011, the geometry and physics from the original structured-mesh,
 multigroup code was gutted and replaced with constructive solid geometry
 routines and physics based on continuous-energy cross sections. In Fall 2011,
 the input file format was changed to an XML format and a basic outline of the
-current tally system was introduced.
+current tally system was introduced. Since then, improvements have been made in
+physics methods, geometry capabilities, and input/output options.
+
+OpenMC has been described in a recent paper in \emph{Annals of Nuclear Energy}
+\cite{ane-romano-2013}. Further developments will be reported in a paper at the
+M\&C 2013 conference \cite{mc-romano-2013}.
 
 \section{Overview of Program Flow}
 
@@ -32,12 +37,12 @@ following steps:
   tallies, and other associated variables.
 \item Initialize the pseudorandom number generator.
 \item Read ACE format cross-sections specified in the problem.
-\item If using a special energy grid treatment such as a union energy grid or
-    lethargy bins, that must be initialized as well.
+\item If using a special energy grid treatment such as a union energy grid with
+  pointers, that must be initialized as well.
 \item In a fixed source problem, source sites are sampled from the specified
-    source. In a criticality problem, source sites are sampled from some initial
-    source distribution or from a source file. The source sites consist of
-    coordinates, a direction, and an energy.
+  source. In an eigenvalue problem, source sites are sampled from some initial
+  source distribution or from a source file. The source sites consist of
+  coordinates, a direction, and an energy.
 \end{itemize}
 Once initialization is complete, the actual transport simulation can
 proceed. The life of a single particle will proceed as follows:
@@ -482,11 +487,10 @@ inelastic scattering, etc. This requires looking up the microscopic cross
 sections for these reactions for each nuclide within the target material. Since
 each nuclide has a unique energy grid, it would be necessary to search for the
 appropriate index for each nuclide at every collision. This can become a very
-time-consuming process. In fact, in the MCNP code (which does not have any type
-of unionized energy grid), energy grid searches may account for up to 30\% of
-the time spent in computation (REF). Thus, there is a strong motive to implement
-a method of reducing the number of energy grid searches in order to speed up the
-calculation.
+time-consuming process, especially if there are many nuclides in a problem as
+there would be for burnup calculations. Thus, there is a strong motive to
+implement a method of reducing the number of energy grid searches in order to
+speed up the calculation.
 
 \subsubsection{Unionized Energy Grid}
 
@@ -559,8 +563,8 @@ linear congruential generator used by default in OpenMC are $g =
 One of the important capabilities for a random number generator is to be able to
 skip ahead in the sequence of random numbers. Without this capability, it would
 be very difficult to maintain reproducibility in a parallel calculation. If we
-want to skip ahead $N$ random numbers and $N$ is large, the cost of just
-sampling $N$ random numbers to get to that position may be prohibitively
+want to skip ahead $N$ random numbers and $N$ is large, the cost of sampling $N$
+random numbers to get to that position may be prohibitively
 expensive. Fortunately, algorithms have been developed that allow us to skip
 ahead in $O(\log N)$ operations instead of $O(N)$. One algorithm to do so is
 described in a paper by Brown \cite{trans-brown-1994}. This algorithm relies on
@@ -608,7 +612,7 @@ Since $\xi$ is uniformly distributed on $[0,1)$, this implies that $1 - \xi$ is
   \ell = -\frac{\ln \xi}{\Sigma_t}.
 \end{equation}
 
-\subsection{$(n,\gamma)$ and Other Disappearance Reactions}
+\subsection{\texorpdfstring{$(n,\gamma)$}{(n,gamma)} and Other Disappearance Reactions}
 
 All absorption reactions other than fission do not produce any secondary
 neutrons. As a result, these are the easiest type of reactions to handle. When a
@@ -1383,7 +1387,7 @@ algorithm to data at 0 K (or some temperature lower than the desired
 temperature). The most ubiquitous algorithm for this purpose is the SIGMA1
 method \cite{nse-cullen-1976} developed by Red Cullen and subsequently refined
 by others. This method is used in the NJOY \cite{nds-macfarlane-2010} and PREPRO
-\cite{iaea-cullen-2010} data processing codes.
+\cite{iaea-cullen-2012} data processing codes.
 
 The effect of thermal motion on secondary angle and energy distributions can be
 accounted for on-the-fly in a Monte Carlo simulation. We must first qualify
@@ -1603,7 +1607,7 @@ speed and cosine if
 If is not accepted, then we repeat the process and resample a target speed and
 cosine until a combination is found that satisfies \eqref{eq:freegas-accept-2}.
 
-\subsection{$S(\alpha,\beta,T)$ Tables}
+\subsection{\texorpdfstring{$S(\alpha,\beta,T)$}{S(a,b,T)} Tables}
 
 For neutrons with thermal energies, generally less than 4 eV, the kinematics of
 scattering can be affected by chemical binding and crystalline effects of the
@@ -1849,8 +1853,10 @@ default, the cutoff weight in OpenMC is $w_c = 0.25$ and the survival weight is
 $w_s = 1.0$. These parameters vary from one Monte Carlo code to another.
 
 \section{Tallies}
+\label{sec:tallies}
 
 \subsection{Filters and Scores}
+\label{sec:filters}
 
 The tally capability in OpenMC takes a similar philosophy as that employed in
 the MC21 Monte Carlo code \cite{mc-sutton-2007} to give maximum flexibility in
@@ -2284,6 +2290,7 @@ source distribution has converged in order to know when to start accumulating
 tallies
 
 \subsection{Shannon Entropy}
+\label{sec:shannon-entropy}
 
 It can be shown that the convergence rate of the source distribution is in
 general slower than that of global eigenvalue, $k$ \cite{lanl-brown-2005}. One

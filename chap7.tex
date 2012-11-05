@@ -1,0 +1,368 @@
+\chapter{Conclusions}
+\label{chap:conclusions}
+
+Monte Carlo particle transport methods are being considered as a viable option
+in the future for high-fidelity simulation of nuclear reactors. This is, in
+part, thanks to the enormous advances in high performance computing. If parallel
+methods were not exploited, the sheer number of floating point operations
+(FLOPs) required to reduce stochastic uncertainty to acceptable levels when
+using Monte Carlo would require unacceptably long simulation time. However, the
+present availability of supercomputers with hundreds of thousands or millions of
+processor cores means that, solely from the perspective of FLOPs required,
+solution to LWR problems using Monte Carlo could hypothetically be done in a
+short time.
+
+Lest we be fooled into thinking floating point operations are the only challenge
+to overcome, let us remind ourselves that they are but one small piece of the
+puzzle --- there are a variety of algorithmic and architectural challenges that
+will not be easy to solve; an excellent summary of these issues, especially as
+they apply to full-core LWR calculations, has recently been given by Martin
+\cite{net-martin-2012}. The objective of this thesis was to make headway towards
+overcoming some of these challenges.
+
+In \autoref{chap:intro}, an overview of four contemporary issues preventing
+Monte Carlo simulations of realistic LWR models was given: source convergence,
+cross section memory requirements, tally memory requirements, and degradation in
+parallel efficiency. In the following sections, we will summarize the status of
+and progress that has been made in each area as well as what ongoing work will
+still be needed in order to reach the goal of performing reactor analysis with
+Monte Carlo.
+
+\section{Source Convergence}
+
+One area that has received quite a bit of attention in the last decade is source
+convergence in Monte Carlo calculations. There are, in a sense, two separate
+issues relating to source convergence. The first is being able to assess the
+convergence of the source distribution, i.e. because the source distribution is
+a collection of finite points in multiple dimensions, how can one assure that it
+has reached stationarity in the method of successive generations. For a scalar
+value, such as the global eigenvalue, it is intuitive to merely look a line plot
+of its value versus the number of batches.
+
+The second issue is accelerating convergence of the source distribution. Until
+the source has converged in a Monte Carlo eigenvalue calculation, it is not
+possible to accumulate tallies. Thus, the inactive batches are ``wasted'' as it
+were. If a method could be employed to reduce the number of inactive batches, we
+would save the wasted calculational time. Both issues are made worse by a high
+dominance ratio; this is unfortunately the case in a full-core reactor where the
+dominance ratio can be very close to unity.
+
+\subsection{Status}
+
+The pioneering work of Ueki and Brown \cite{trans-ueki-2002, physor-brown-2006}
+has helped introduce and gain acceptance of the Shannon entropy, a scalar metric
+based on information theory, as a proper means for assessing convergence of the
+source distribution. Shannon entropy has now been implemented in most modern
+Monte Carlo codes, including OpenMC (see \autoref{sec:shannon-entropy}). While
+Shannon entropy will work for nearly all models, it may be ill-suited for very
+large, loosely-coupled models such as a spent fuel array; for these problems,
+research efforts are looking into mesh-based convergence diagnostics
+\cite{mc-she-2011}.
+
+Various methods have been proposed, tested, and implemented in Monte Carlo codes
+for accelerating source convergence. In the author's opinion, one of the more
+promising methods, which is widely employed in deterministic calculations, is
+coarse mesh finite difference. The basic idea is to use volume-integrated
+reaction rates and partial currents on mesh surfaces from Monte Carlo tallies to
+solve a low-order system. This method has been proven to be quite effective in
+reducing the number of inactive batches in Monte Carlo eigenvalue
+calculations \cite{physor-lee-2012}.
+
+We see then that source convergence is, more or less, a ``solved'' problem as it
+concerns Monte Carlo eigenvalue calculations. For full-core LWR models, CMFD can
+be used to accelerate source convergence, and Shannon entropy can be used to
+assess source convergence. As a result, it was not an objective of this thesis
+to pursue further work in the area of source convergence.
+
+\subsection{Future Work}
+
+Nevertheless, there are still a number of interesting areas of research
+pertaining to source convergence. While source convergence can be assessed using
+Shannon entropy, there is as-of-yet no viable method for diagnosing
+undersampling. Undersampling is a phenomenon whereby local tallies may be
+systematically biased as a result of not using enough particles per batch
+\cite{nse-ueki-2005, nse-ueki-2008}. To the author's knowledge, only one method
+for undersampling diagnosis has been proposed in the literature
+\cite{jnst-ueki-2011}, but it unfortunately would not be feasible in a realistic
+calculation due to memory requirements. Moreover, while the bias in global
+eigenvalue is fairly well understood \cite{ane-brissenden-1986} and known to be
+small, no study has systematically looked at bias in local tallies due to
+undersampling.
+
+In the area of source convergence acceleration, one current ``hot topic''
+pertaining to CMFD is determining the best way to generate multigroup parameters
+for the diffusion solver. In particular, generating multigroup diffusion
+coefficients from a Monte Carlo code can be problematic. A number of research
+efforts are currently looking at methods for generating diffusion coefficients
+in the hope that more accurate parameters will lead to better convergence
+properties \cite{ane-fridman-2011, nse-pounders-2009}. Researchers are also
+looking at other low-order methods for accelerating convergence.
+
+\section{Parallel Efficiency}
+
+Solution of full-core LWR problems will require an enormous number of floating
+point operations and will thus necessitate the use of thousands or millions of
+processors in parallel. However, with current parallel algorithms, a serious
+degradation in parallel efficiency will likely be experienced when one tries to
+use even thousands of processors \cite{physor-hoogenboom-2012}. To reiterate,
+two of the root causes for this degradation are reduction of tallies and
+synchronization of the fission source at each batch in an eigenvalue
+calculation. One of our major objectives in this work has been to develop
+algorithms that ameliorate the degradation of parallel efficiency at large
+numbers of processors.
+
+\subsection{Contributions of Present Work}
+
+In \autoref{chap:fission-bank}, a nearest-neighbor algorithm was proposed and
+subsequently implemented in the OpenMC Monte Carlo code. This algorithm takes
+advantage of the fact that many of the fission sites produced on one processor
+can be used as source sites on that same processor --- in doing so, it avoids
+unnecessary communication between processors. A theoretical analysis of the
+algorithm shows that the expected cost is $O(\sqrt{N})$, $N$ being the number of
+particles per generation, whereas traditional master-slave algorithms are $O(N)$
+at best, and possibly even $O(N \log_2 N)$. The algorithm was tested on two
+contemporary supercomputers, the Intrepid Blue Gene/P at ANL and the Titan Cray
+XK7 at ORNL, and demonstrated nearly linear parallel scaling up to 163,840
+processor cores. There is no reason to believe that the nearest-neighbor
+algorithm will not scale to even greater processor counts.
+
+In \autoref{chap:tally-reduction}, an algorithm for reducing network
+communication arising from tally reduction was analyzed and, again, implemented
+in OpenMC. The basic idea is conceptually very simple --- the grouping of
+particles histories into batches for the sake of calculating variance is
+arbitrary. The proposed algorithm groups only particle histories on a single
+processor and in doing so prevents all network communication for tallies until
+the very end of the simulation. In a large scale parallel calculation of, say, a
+realistic LWR model, it is likely that enough processors will be used to obtain
+a sufficient number of realizations of the random variables. This algorithm was
+tested in OpenMC on the Monte Carlo performance benchmark on a cluster at MIT,
+and it was shown that network communication was substantially reduced.
+
+Together, the algorithms presented in \autoref{chap:fission-bank} and
+\autoref{chap:tally-reduction} should enable very high parallel efficiencies to
+be attained for eigenvalue calculations using the method of successive
+generations. These algorithms have been published in \cite{nse-romano-2012} and
+\cite{trans-romano-2012}, respectively.
+
+\subsection{Future Work}
+
+There are a few potential shortcomings of the nearest-neighbor fission bank
+algorithm. One that was mentioned in the conclusions of
+\autoref{chap:fission-bank} is that the algorithm would preclude the use of load
+balancing via existing algorithms for heterogeneous computer architectures. A
+simple method to provide load balancing in such situations based on ``tuning''
+the algorithm was suggested, but it has never been tested. Additionally, the
+nearest-neighbor algorithm may be very difficult to combine with any domain
+decomposition scheme since the order of fission bank sites would necessarily
+depend on their spatial coordinates. If domain decomposition is ever to be used
+for calculations with tens of thousands of processors or more, this issue will
+likely need to be addressed.
+
+The tally reduction algorithm is robust; we see no immediate need to pursue
+further work on it. Perhaps one downside of the method is that it will not
+exactly reproduce the variance of a calculation in which particle histories are
+batched according to single fission generations. However, this is no different
+than saying that any calculation that uses batching will not reproduce the
+variance exactly. It was argued that, in the absence of intergenerational
+correlation, the expected value of the variance is the same regardless of the
+batching. In fact, batching particle histories across fission generations will
+produce more reliable estimates of variance in an eigenvalue calculation since
+intergenerational correlation effects are avoided in doing so.
+
+\section{Cross Section Memory}
+
+In order to perform a realistic simulation of a reactor at power, it is
+important to account for the dependence of interaction cross sections on
+temperature. In \autoref{sec:cross-section-memory}, this was discussed at
+length, and we found that the memory requirements resulting from storing cross
+sections at a multitude of temperatures could be as high as hundreds of
+gigabytes. Thus, methods are needed to reduce or decompose the cross section
+data. We reiterate that this thesis has not looked at this particular issue
+since other research efforts have shown promise.
+
+\subsection{Status}
+
+Two substantial efforts are underway aimed at reducing cross section memory
+requirements. The first is the work of Yesilyurt, Martin, and Brown on
+on-the-fly Doppler broadening of cross sections \cite{nse-yesilyurt-2012,
+  trans-brown-2012}. In this method, the cross section at any temperature is
+represented as a series expansion --- thus only the series expansion
+coefficients need to be stored in memory. Preliminary work on this method looks
+promising, but it has yet to be demonstrated for a realistic problem with
+hundreds of nuclides at many temperatures.
+
+The other more recent research effort is an explicit temperature treatment by
+Viitanen and Leppänen \cite{nse-viitanen-2012}. This is a fundamentally
+different approach wherein cross sections are only stored at 0 K and the effect
+of the thermal motion of the target material is accounted for by using a
+rejection sampling technique. This would reduce the necessary cross section
+storage to that of a single temperature. The work is still in a preliminary
+state; however, it has been demonstrated rigorously that this method can account
+for the thermal motion of nuclides in material at a temperature greater than 0
+K.
+
+\subsection{Future Work}
+
+In both the on-the-fly Doppler broadening and explicit temperature methods, the
+temperature dependence of $S(\alpha,\beta,T)$ data and unresolved resonance
+probability tables can not be accounted for. For any realistic reactor
+simulation, accounting for the temperature dependence of $S(\alpha,\beta,T)$ is
+absolutely essential to obtaining accurate results. It should be noted however
+that $S(\alpha,\beta,T)$ and probability table data is typically a very small
+fraction of the overall cross section data. As such, it may be feasible to
+simply store these data at very fine temperature intervals. However, this has
+not been studied.
+
+The explicit temperature method has been shown to produce unbiased results
+\cite{nse-viitanen-2012}. However, no results in the literature have
+demonstrated what the effect on the figure of merit for tallies would be,
+i.e. while the absolute performance cost was shown to be reasonable
+\cite{physor-viitanen-2012}, does the method require significantly more
+particles to obtain comparable statistics? Until that question is answered, it
+is not possible to assess the performance penalty of the method versus using
+normal Doppler broadened cross sections.
+
+\section{Tally Memory --- Domain Decomposition}
+
+In the current SPMD parallel technique for Monte Carlo particle transport, all
+problem data stored in memory must be replicated on each process in a
+simulation. For the simulation of a light-water reactor, the memory requirements
+for tallies may be enormous, likely exceeding terabytes. A method for
+decomposing tally memory across many processors is critical in such a
+scenario. In this thesis, we have looked at two different schemes for
+decomposing tally memory, domain decomposition and data decomposition.
+
+\subsection{Contributions of Present Work}
+
+A theoretical framework for analyzing domain decomposition of Monte Carlo
+particle transports has only been posed in the last year or so
+\cite{jcp-siegel-2012-1}. In \autoref{chap:domain-decomp}, we presented a
+theoretical analysis of domain decomposed Monte Carlo particle transport
+simulations looking at the effect of load imbalances on the total simulation
+time relative to a perfectly load balanced simulation\footnote{This is analogous
+  to a simulation performed with no domain decomposition.}. The analysis
+demonstrated that load imbalances in domain decomposed simulations arise from
+two different phenomena: non-uniform particle densities and non-uniform spatial
+leakage. One of the interesting facts we can glean from the analysis is that the
+dominant performance penalty in domain decomposition comes not from network
+communication but from these load imbalances. Importantly, the penalty from
+non-uniform spatial leakage is a function of the subdomain size --- smaller
+partitions lead to a larger penalty from the load imbalance. This may limit the
+utility of domain decomposition for reactor analysis.
+
+The analysis and results from \autoref{chap:domain-decomp} were published in
+\cite{jcp-siegel-2012-2}.
+
+\subsection{Future Work}
+
+In \autoref{chap:domain-decomp}, the assessment of the load imbalance penalty
+was done based on measurements of the Monte Carlo performance benchmark using
+OpenMC. We suggest that future work look at measurements on an actual reactor
+model, such as the MIT PWR benchmark. The enrichment zoning will likely result
+in a smaller load imbalance penalty from non-uniform particle densities (since
+the power distribution should be flatter), but greater material heterogeneities
+could mean that the load imbalance penalty from non-uniform spatial leakage is
+worse.
+
+Additionally, while the analysis in \autoref{chap:domain-decomp} looked at the
+load imbalance penalty for various domain sizes, it was not mentioned what
+domain size will really be necessary for reactor analysis. This will be largely
+determined by the tally memory requirements since they will impose a limit on
+the size of a spatial subdomain. Other methods proposed in the literature such
+as overlapping domains and domain replication should also be accounted for.
+
+Spatial leakage rates may also be sensitive to the use of survival biasing or
+other weight adjustment methods used in Monte Carlo eigenvalue
+calculations. This effect should be quantified to assess whether this would
+substantially change the results we arrived at in \autoref{chap:domain-decomp}.
+
+\section{Tally Memory --- Data Decomposition}
+
+The main alternative to domain decomposition for reducing tally memory
+requirements is data decomposition. Although this idea has existed in the
+literature for eight years \cite{trans-brown-2004}, little to no work or
+analysis has been carried out until now. The last objective of this thesis was
+to enhance our understanding of data decomposition algorithms to determine
+whether they might enable realistic reactor analysis using Monte Carlo.
+
+\subsection{Contributions of Present Work}
+
+In \autoref{chap:data-decomp}, an algorithm for decomposing large tally data in
+Monte Carlo particle transport simulations was proposed, analyzed, and
+implemented/tested in OpenMC. The algorithm relies on disjoint sets of compute
+processes and servers of which the former simulate particles moving through the
+geometry and the latter runs in a continuous loop receiving scores from the
+compute processors and incrementing tallies. The analysis in
+\autoref{sec:tally-server-analysis} showed that for a range of parameters
+relevant to LWR analysis, the tally server algorithm should perform with minimal
+overhead on contemporary supercomputers. The implementation of the algorithm in
+OpenMC was tested on the Intrepid and Titan supercomputers and was demonstrated
+to perform well over a wide range of the parameters. We thus conclude that the
+tally server algorithm is a successful approach to circumventing classical
+on-node memory constraints en route to unprecedentedly detailed Monte Carlo
+reactor simulations.
+
+The work presented on the tally server algorithm has been submitted for
+publication in \cite{jcp-romano-2013}.
+
+\subsection{Future Work}
+
+The first implementation of the tally server algorithm in OpenMC relied on
+blocking communication semantics. It would be worthwhile to implement
+non-blocking communication to further reduce the overhead from the tally server
+algorithm. While the algorithm performed well on contemporary supercomputers, on
+a machine more within the reach of a typical user, such as a small cluster,
+network communication may become a major problem.
+
+One of the important parameters in the theoretical analysis of the tally server
+algorithm is the number of events per particle. This parameter will be affected
+by the use of survival biasing and other variance reduction techniques. Namely,
+survival biasing will increase the number of events per particle. However, the
+absolute simulation time will also increase as a result of the use of survival
+biasing. In any event, the effect of survival biasing on this parameter and the
+feasibility of the tally server algorithm should be quantified.
+
+The number of events per particle will also be affected by the discretization of
+a fuel pin into axial and radial segments. Such discretization will be necessary
+for detailed depletion calculations. Thus, this effect should also be quantified
+and its impact on the overhead assessed.
+
+The tests of the tally server algorithm on Intrepid and Titan were only
+performed on up to 1,024 processors. Although the performance showed little
+dependence on the number of processors (as predicted), it would nevertheless be
+instructive to perform a very large simulation on many processors and with very
+large tally requirements.
+
+\section{Other Future Work}
+
+One area that has received, undeservedly, little attention in this thesis is the
+coupling of neutronics to other fields such as thermal-hydraulics, transients,
+fuel performance, and mechanics. Without feedback from these fields, one can
+only obtain a solution to the \emph{wrong} problem. For the purpose of realistic
+reactor analysis using Monte Carlo, much work will be needed to best account for
+multi-physics feedback. We refer the reader to \cite{net-martin-2012} for a
+review of current work in this area.
+
+Neutronic simulations are typically performed assuming no coupling between
+neutron and photon physics. As a result, it is necessary to make assumptions
+regarding the distribution of photon energy deposition. A typical procedure is
+to ``smear'' the photon energy deposition over the problem. Again, to truly
+obtain an accurate solution, explicit coupling of neutron and photon transport
+is needed.
+
+Many Monte Carlo codes do not account for physics effects that may be important
+in certain situations: to name a few, the impact of low-energy resonance
+scattering from heavy nuclides \cite{ane-becker-2009, physor-sunny-2012}, the
+epithermal scattering of neutrons from Hydrogen via the short collision time
+approximation \cite{mc-sutton-2009}, and a continuous $S(\alpha,\beta,T)$
+treatment \cite{physor-pavlou-2012}. To the author's knowledge, MC21 is the only
+code that can account for all these effects. Wider acceptance and implementation
+of these methods will be needed for reactor analysis.
+
+The last issue we will mention is that the memory required to store material
+compositions may become non-trivial for depletion calculations. Consider a
+reactor with 193 assemblies, 264 pins in each assembly, and a subdivision of
+each pin into 100 axial segments and 10 radial rings: a total of about 254
+million materials. For a depletion calculation, the densities of up to 300
+nuclides would need to be stored for each material. The material compositions
+alone would therefore require over 120 GB of memory.

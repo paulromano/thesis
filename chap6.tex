@@ -1,92 +1,56 @@
 \chapter{Data Decomposition}
 \label{chap:data-decomp}
 
-\section{Introduction}
+\section{Background}
 
-A considerable amount of recent research and development in the reactor physics
-community has focused on using Monte Carlo methods to directly simulate
-full-core reactor models. There are a number of potential motivations for using
-Monte Carlo methods over more traditional deterministic formulations
-\cite{net-martin-2012, jcp-siegel-2012-2}. Many of the approximations made in
-the use of deterministic methods may complicate their use for certain classes of
-problems, e.g. small-modular reactors with high leakage. Monte Carlo, being free
-from these approximations, looks attractive if sufficient computing resources
-are available.
+It has been mentioned several times already in this thesis, but it bears
+reminding the reader once again --- one of the imminent challenges for Monte
+Carlo, as well as deterministic, methods is coping with limited amounts of
+memory. While the availability of great amounts of processing power might
+otherwise enable us to perform simulations with remarkable fidelity, the memory
+requirements for such simulations will often exceed that available. For a
+realistic LWR simulation, tally data alone will likely require terabytes of
+memory (see discussion in \autoref{sec:tally-memory}). This problem is
+exacerbated by the fact that current parallel methods still generally rely on
+each program instance storing the full geometry, interaction cross section, and
+tally data in memory.
 
-That being said, the availability of any given supercomputer does not
-necessarily go hand-in-hand with an implementation of Monte Carlo methods that
-will be able to fully utilize the resources. In fact, despite the many advances
-in Monte Carlo methods over the past few decades, an efficient parallel
-implementation for large-scale criticality calculations capable of scaling on
-modern petascale supercomputers has, until very recently \cite{ane-romano-2013},
-not been demonstrated in the literature. There are a number of factors that
-hinder the parallel performance of these calculations \cite{net-martin-2012,
-  pnst-brown-2011}. However, methods to overcome some of the traditional
-limitations in parallel implementations such as synchronization of the fission
-bank \cite{nse-romano-2012, ane-romano-2013} and tallies
-\cite{trans-romano-2012} have now been demonstrated.
+There is of course good reason to use full memory replication --- each process
+can simulate particles independently\footnote{This is strictly only true in a
+  fixed source calculation. In an eigenvalue calculation, there is a dependency
+  between fission source iterations.} of one another and the tally results can
+be collected at the end of the simulations. However, it is clear that some
+method for avoiding replication of cross section and tally data must be an
+essential component in any strategy to simulate reactor models with Monte
+Carlo. Two algorithms have been proposed in the literature that do offer the
+potential to avoid replication and furthermore decompose tally data across many
+processors: domain decomposition and data decomposition.
 
-Currently, the major impediment to using Monte Carlo methods for reactor
-analysis is the fact that the parallel algorithms still generally rely on each
-program instance storing the full geometry, interaction cross section, and tally
-data in memory. There is of course good reason to use full memory replication
---- each process can simulate particles independently\footnote{This is strictly
-  only true in a fixed source calculation. In an eigenvalue calculation, there
-  is a dependency between fission source iterations.} of one another and the
-tally results can be collected at the end of the simulations. For reactor
-analysis, however, the size of the cross section and tally data can easily
-exceed the memory available on a single node. Siegel et
-al. \cite{jcp-siegel-2012-2} estimate that cross section data could
-hypothetically exceed 100 GB and tally data could exceed 0.5 TB.
+In \autoref{chap:domain-decomp}, we presented a theoretical analysis of domain
+decomposed Monte Carlo particle transport simulations looking at the effect of
+load imbalances on the total simulation time. The analysis demonstrated that
+load imbalances in domain decomposed simulations arise from two different
+phenomena: non-uniform particle densities and non-uniform spatial leakage. It's
+important to draw attention to the fact that even if we assumed zero latency and
+zero inverse bandwidth (i.e. an infinitely fast network), the load imbalance
+penalty does not disappear --- it is a physical artifact. In this chapter, we
+now draw our attention to an algorithm which avoids load balancing issues by
+keeping individual particles local to a single process while explicitly
+decomposing the tally data.
 
-In order to treat realistic reactor problems, an algorithm that is capable of
-dealing with limited per-node memory must be employed. Two general strategies
-have been proposed for dealing with limited memory in Monte Carlo simulations:
-\emph{domain decomposition} and \emph{data decomposition}. In domain
-decomposition, the physical space of the problem is divided into subdomains,
-each of which is assigned to a different processor. When a particle reaches the
-boundary of a processor's subdomain, it is buffered and eventually sent to a
-neighboring process, whose subdomain includes the region of space the particle
-is about to enter. In this algorithm, each processor only has to store in memory
-the geometry, cross section, and tally data associated with its subdomain. In
-practice, cross section data is needed everywhere in phase space, so domain
-decomposition generally does not alleviate the burden of large cross section
-storage. However, it does provide a natural means of decomposing a large tally
-into smaller chunks, each of which resides in the memory of a different
-processor. Domain decomposition has been implemented in an implicit Monte Carlo
-code \cite{jcp-brunner-2009} as well as the Mercury \cite{mc-greenman-2009} and
-Shift \cite{physor-mervin-2012} Monte Carlo particle transport codes. More
-recently, a theoretical formulation has been developed by Siegel et al. that
-helps to predict the performance of domain decomposition algorithms
-\cite{jcp-siegel-2012-1, jcp-siegel-2012-2}.
-
-The work in \cite{jcp-siegel-2012-2} elucidates some important limitations of
-domain decomposition algorithms. One of the classical arguments against domain
-decomposition has been that a properly load-balanced simulation would be
-difficult to achieve for a problem with non-uniform particle densities (such as
-nuclear reactor). The original intent of \cite{jcp-siegel-2012-2} was to simply
-quantify the penalty from these non-uniform particle densities in a typical
-light-water reactor (LWR) simulation. However, in doing so, the theory revealed
-a related but perhaps more important limitation that has implications for
-simulation on large-scale supercomputers. Namely, as the number of processors
-increases, the subdomain size on each processor would become smaller and
-smaller. With an increasingly small domain size, the leakage rates between
-neighboring domains will approach unity, implying that communication costs would
-increase drastically. Indeed, this argument makes it hard to imagine domain
-decomposition being performed on thousands of processors without incurring a
-seriously penalty.
+\subsection{Data decomposition}
 
 While a considerable amount of work and analysis has been carried out on domain
-decomposition, very little work has focused on data decomposition. The basic
-concept of data decomposition is that a disjoint subset of the processes in a
-simulation act as \emph{servers}, sending and/or receiving data to \emph{compute
-  processes} as needed. In its most general form, the data could be geometry,
-cross sections, and/or tallies. The compute processes handle the actual
-transport of particles from birth to death and communicate with the servers as
-needed. Thus, we see that data decomposition does have some similarities to
-domain decomposition in the sense that the compute processes are still tracking
-particles independently of one another. However, particles are never transferred
-from one process to another.
+decomposition, very little work has focused on data decomposition to-date. The
+basic concept of data decomposition is that a disjoint subset of the processes
+in a simulation act as \emph{servers}, sending and/or receiving data to
+\emph{compute processes} as needed. In its most general form, the data could be
+geometry, cross sections, and/or tallies. The compute processes handle the
+actual transport of particles from birth to death and communicate with the
+servers as needed. Thus, we see that data decomposition does have some
+similarities to domain decomposition in the sense that the compute processes are
+still tracking particles independently of one another. However, particles are
+never transferred from one process to another.
 
 The potential for data decomposition to alleviate per-node memory restrictions
 had been identified by Brown and Martin as early as 2004
@@ -98,26 +62,36 @@ decomposing geometry and cross section data. In this paper, we take a first look
 at an algorithm designed not to decompose geometry or cross section data but
 rather to decompose large tally data.
 
+We note that the data decomposition method can generally be considered to be a
+partitioned global address space (PGAS) programming model. While PGAS models
+have been discussed widely within the computer science community, there have not
+yet been many practical applications using PGAS techniques or languages. A paper
+being presented at the IEEE International Conference on High Performance
+Computing, however, looks at the use of a partitioned global address space model
+for quantum Monte Carlo simulations \cite{hipc-niu-2012}.
+
+The analysis and results in this chapter are included in a paper submitted for
+publication in \emph{Journal of Computational Physics} \cite{jcp-romano-2013}.
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Tally Server Algorithm}
+\subsection{Tally Server Algorithm}
 \label{sec:tally-server-algorithm}
 
 During a Monte Carlo simulation, estimates of physical parameters are made by
 keeping running sums of scores from events such as collisions or particle
-tracks. These running sums are referred to as \emph{tallies}. For example, to
-estimate the flux in a closed volume, one could keep a running sum that is
-incremented by the length of the particle's track within the volume each time
-the particle travels between collisions. The simplicity of tally incrementing
-makes it amenable to an atomic fetch-and-add operation (whether this be a CPU
-instruction or a remote direct memory access operation). Normally, tallies are
-stored in local memory. Synchronization between processors is typically
-performed only after simulating a predetermined number of particles, referred to
-as a \emph{batch}. However, since tally data is not needed for determining the
-random walk of a particle, it can be stored remotely. For the sake of
-simplicity, we will look at an algorithm where the tally data is stored in the
-address space of a process whose sole purpose is to receive scores from other
-processes and increment the tallies accordingly. These processes are called
-\emph{tally servers} by analog to a classic client-server architecture.
+tracks. These running sums are referred to as \emph{tallies}. The theory and
+implementation of tallies was discussed at length in \autoref{sec:tallies}. The
+simplicity of tally incrementing makes it amenable to an atomic fetch-and-add
+operation (whether this be a CPU instruction or a remote direct memory access
+operation). Normally, tallies are stored in local memory. Synchronization
+between processors is typically performed only after simulating a predetermined
+number of particles, referred to as a \emph{batch}. However, since tally data is
+not needed for determining the random walk of a particle, it can be stored
+remotely. For the sake of simplicity, we will look at an algorithm where the
+tally data is stored in the address space of a process whose sole purpose is to
+receive scores from other processes and increment the tallies accordingly. These
+processes are called \emph{tally servers} by analog to a classic client-server
+architecture.
 
 In the tally server data decomposition algorithm, we start with a set of $p$
 processes that are divided into $c$ compute processes and $s$ tally
@@ -129,23 +103,24 @@ to a tally server. Since all tally accumulation is performed on the server, the
 compute processes do not need to store the tallies in memory (other than
 meta-data describing the tally).
 
-To be more explicit on the data requirements, it helps to introduce the notion
-of \emph{filters} and \emph{scoring functions}. A filter refers to a criterion
-that limits what events can score to a given tally.  The filter criteria
-generally concern the properties of a particle. For example, a filter criterion
-could be that a particle has a collision within a defined mesh cell, or that a
-particle's energy is within a defined range. The scoring functions are the
-actual physical quantities to be tallied, such as flux, reaction rates,
-currents, etc. If an event satisfies all filter criteria for a tally, a
-\emph{tally bin} for each scoring function would be incremented by an estimate
-of the scoring function. Thus, a single event can increment more than just a
-single location in memory. As an example, a tally could specify that the
-reaction rate in each of 300 nuclides should be determined. In such a case, each
-scoring event would have to increment 300 tally bins. We see that the fact that
-we have $d$ bytes where $d \ge 8$ (the size of one double-precision float) stems
-from the fact that a single scoring event may need to score to hundreds of
-scoring functions. The message sent to a server at a scoring event consists of
-the scores for each scoring function.
+To be more explicit on the data requirements, it helps to recall the notion of
+\emph{filters} and \emph{scoring functions}, which were discussed in
+\autoref{sec:filters}. To summarize, a filter refers to a criterion that limits
+what events can score to a given tally. The filter criteria generally concern
+the properties of a particle. For example, a filter criterion could be that a
+particle has a collision within a defined mesh cell, or that a particle's energy
+is within a defined range. The scoring functions are the actual physical
+quantities to be tallied, such as flux, reaction rates, currents, etc. If an
+event satisfies all filter criteria for a tally, a \emph{tally bin} for each
+scoring function would be incremented by an estimate of the scoring
+function. Thus, a single event can increment more than just a single location in
+memory. As an example, a tally could specify that the reaction rate for each of
+300 nuclides should be determined. In such a case, each scoring event would have
+to increment 300 tally bins. We see that the fact that we have $d$ bytes where
+$d \ge 8$ (the size of one double-precision float) stems from the fact that a
+single scoring event may need to score to hundreds of scoring functions. The
+message sent to a server at a scoring event consists of the scores for each
+scoring function.
 
 Each process that has been designated as a server does not track any particles
 but instead continuously receives data from the compute processes and increments
@@ -421,13 +396,12 @@ develop realistic estimates for the speed of the network interconnect ($\alpha$
 and $\beta$), the calculational rate ($\mu$), and the amount and frequency of
 data being tallied ($d$ and $f$). For the network latency and bandwidth, our
 systems of interest are two modern supercomputers: the Blue Gene/P supercomputer
-(Intrepid) at Argonne National Laboratory (ANL) and the Cray XK6 supercomputer
+(Intrepid) at Argonne National Laboratory (ANL) and the Cray XK7 supercomputer
 (Titan) at Oak Ridge National Laboratory (ORNL). For the purposes of estimating
 $d$ and $f$, we will look at solving for reaction rate distributions within fuel
 pins in the Monte Carlo performance benchmark \cite{mc-hoogenboom-2011} using
-the OpenMC Monte Carlo particle transport code \cite{ane-romano-2013}. The
-calculational rate will depend both on the computer architecture as well as the
-specific model chosen.
+simulations with OpenMC. The calculational rate will depend both on the computer
+architecture as well as the specific model chosen.
 
 The Intrepid supercomputer has 40 Blue Gene/P racks with 1024 nodes each. In
 turn, each node has a quad-core PowerPC 450 processor and 2 GB of
@@ -442,36 +416,37 @@ each processor, i.e. $\mu = 0.0132 \unit{s/particle}$. We have chosen to use 320
 nuclides in the fuel as this is the maximum number of nuclides available in the
 ENDF/B-VII.0 cross section library used in the simulation.
 
-The Titan supercomputer has 18,688 Cray XK6 compute nodes, each of which has a
-16-core AMD Opteron 6274 processor with 32 GB of memory. The Cray XK6 uses the
-Cray Gemini interconnect which has lower latency and higher bandwidth than the
-interconnect on the Blue Gene/P. Unfortunately, reliable performance
-measurements for the Cray Gemini interconnect are hard to come by. Preliminary
-measurements indicate an MPI latency of about 1.5 microseconds and a peak user
-data injection bandwidth of about 6 GB/s \cite{hlrs-workshop-2011}. We will
-conservatively estimate the latency as $\alpha = 2.0 \cdot 10^{-6} \unit{s}$ and
-the inverse bandwidth as $\beta = 2.5 \cdot 10^{-10} \unit{s/byte}$. Performing
-a simulation of the Monte Carlo performance benchmark on the Cray XK6 as
-described before gives us a particle tracking rate of $1/\mu = 140$.
+The Titan supercomputer has 18,688 Cray XK7 compute nodes, each of which has a
+16-core AMD Opteron 6274 processor with 32 GB of memory and a nVidia Tesla K20
+GPU. The Cray XK7 uses the Cray Gemini interconnect which has lower latency and
+higher bandwidth than the interconnect on the Blue Gene/P. Unfortunately,
+reliable performance measurements for the Cray Gemini interconnect are hard to
+come by. Preliminary measurements indicate an MPI latency of about 1.5
+microseconds and a peak user data injection bandwidth of about 6 GB/s
+\cite{hlrs-workshop-2011}. We will conservatively estimate the latency as
+$\alpha = 2.0 \cdot 10^{-6} \unit{s}$ and the inverse bandwidth as $\beta = 2.5
+\cdot 10^{-10} \unit{s/byte}$. Performing a simulation of the Monte Carlo
+performance benchmark on the Cray XK7 as described before gives us a particle
+tracking rate of $1/\mu = 140$.
 
 Let us briefly discuss what values are appropriate to use for $f$, the number of
 events per particle. For the purpose of LWR core analysis, we are mostly
 interested in integrated fluxes and reaction rates in the fuel and thus can
 ignore all events in the cladding, water, and elsewhere. For the Monte Carlo
 performance benchmark which has a fuel pin diameter of 0.82 cm, each particle
-has on average 5.7 collisions in fuel and 21.3 total tracks in fuel\footnote{If
-  a fuel pin is subdivided into multiple regions for performing depletion
-  analysis, the number of tracks would increase. We will assume no subdivision
-  in the present work.}. As a point of reference, each particle has about 26
-total collisions during its lifetime and makes 132 total tracks\footnote{These
-  figures were obtained using no survival biasing techniques.}. Thus, the cases
-of most practical interest would be using a collision estimator to accumulate
-scores only in the fuel ($f = 5.7$) and using a track-length estimator to
-accumulate scores only in the fuel ($f = 21.3$). To obtain an upper bound on
-$d$, a good reference point is a depletion calculation where six reaction rates
-are needed for each of the 320 nuclides in the fuel. In this bounding case, a
-compute process would need to send $6 \cdot 320 \cdot 8 \; \text{bytes} = 15.36
-\; \text{kilobytes}$ at each event.
+has on average 5.7 collisions in fuel and 21.3 tracks in fuel\footnote{If a fuel
+  pin is subdivided into multiple regions for performing depletion analysis, the
+  number of tracks would increase. We will assume no subdivision in the present
+  work.}. As a point of reference, each particle has about 26 collisions and 132
+tracks during its lifetime\footnote{These figures were obtained using no
+  survival biasing techniques.}. Thus, the cases of most practical interest
+would be using a collision estimator to accumulate scores only in the fuel ($f =
+5.7$) and using a track-length estimator to accumulate scores only in the fuel
+($f = 21.3$). To obtain an upper bound on $d$, a good reference point is a
+depletion calculation where six reaction rates are needed for each of the 320
+nuclides in the fuel. In this bounding case, a compute process would need to
+send $6 \cdot 320 \cdot 8 \; \text{bytes} = 15.36 \; \text{kilobytes}$ at each
+event.
 
 To summarize the preceding considerations, \autoref{tab:parameters} shows the
 parameter space for both the Intrepid and Titan supercomputers. Using these
@@ -483,11 +458,9 @@ supercomputer. Based on our performance model, one can see that the
 communication will be latency-dominated for small $d$ and bandwidth-dominated
 for large $d$. Our upper bound of 15.36 kilobytes is clearly in the
 bandwidth-dominated region. \autoref{fig:model-titan} shows the estimated
-overhead as a function of $f$ and $d$ for the Titan supercomputer. While the
-Cray XK6 has very high bandwidth, the slower latency and faster processors makes
-the performance approximately equivalent to that of the Blue Gene/P. For $f =
+overhead as a function of $f$ and $d$ for the Titan supercomputer. For $f =
 21.3$ and $d = 15360$, the model predicts an overhead of 14.0 and 3.5 percent of
-the total running time for the Intrepid Blue Gene/P and Titan Cray XK6
+the total running time for the Intrepid Blue Gene/P and Titan Cray XK7
 supercomputers, respectively, when using blocking communication. If non-blocking
 communication is used, the overhead is expected to be less than 10 percent on
 Intrepid as well.
@@ -524,7 +497,7 @@ Intrepid as well.
 \begin{figure}[htb]
   \centering
   \includegraphics[width=4in]{figures/ch6/model_titan}
-  \caption{Estimated tally server overhead for Titan Cray XK6 supercomputer
+  \caption{Estimated tally server overhead for Titan Cray XK7 supercomputer
     based on \eqref{eq:overhead-blocking} and \eqref{eq:overhead-nonblocking}.}
   \label{fig:model-titan}
 \end{figure}
@@ -675,28 +648,19 @@ is accounted for explicitly by measuring $\mu$ over a range of $d$.
 
 \subsection{Description of algorithm}
 
-The algorithm described in \autoref{sec:tally-server-algorithm} was implemented in OpenMC
-\cite{ane-romano-2013}, an open source Monte Carlo neutronic simulation software
-package recently developed at MIT capable of performing calculations on
-arbitrary 3D geometries with continuous-energy cross-sections. OpenMC was
-written with a focus on scalable algorithms for leadership-class supercomputers
-and has demonstrated weak scaling up to hundreds of thousands of processors on
-ALCF's Intrepid and OLCF's Jaguar supercomputers \cite{ane-romano-2013}. The
-codebase is written in Fortran 2008 with parallelism provided via MPI and
-OpenMP.
-
-Modest changes were required in the OpenMC source code to implement the tally
-server algorithm. At initialization time, processes are divided into compute
-processes and servers based on user input. If $p$ total processes and $s$
-servers are specified, then the processes whose MPI rank satisfies $i + 1 \mod
-s/p = 0$ are assigned as servers. Each user-defined tally has an array of score
-objects whose length is the product of the number of filter bins multiplied by
-the number of scoring functions. All scoring bins from user-defined tallies are
-concatenated into one ``global'' tally score array which is then divided equally
-over the servers. Finally, a look-up table is constructed that relates indices
-in the global tally scores array to indices within the scores array for each
-user-defined tally. The look-up table enables the compute processes to determine
-which server they need to send scores to.
+The algorithm described in \autoref{sec:tally-server-algorithm} was implemented
+in OpenMC; only modest changes were required to the source code to implement the
+tally server algorithm. At initialization time, processes are divided into
+compute processes and servers based on user input. If $p$ total processes and
+$s$ servers are specified, then the processes whose MPI rank satisfies $i + 1
+\mod s/p = 0$ are assigned as servers. Each user-defined tally has an array of
+score objects whose length is the product of the number of filter bins
+multiplied by the number of scoring functions. All scoring bins from
+user-defined tallies are concatenated into one ``global'' tally score array
+which is then divided equally over the servers. Finally, a look-up table is
+constructed that relates indices in the global tally scores array to indices
+within the scores array for each user-defined tally. The look-up table enables
+the compute processes to determine which server they need to send scores to.
 
 The necessary changes to the actual tallying subroutines that are used during
 particle tracking follow directly from the discussion in
@@ -956,12 +920,12 @@ for $c/s = 1$, $c/s = 3$, $c/s = 7$, and $c/s = 15$ is shown in
   \makebox[\textwidth][c]{
   \begin{floatrow}[2]
     \ffigbox[\FBwidth] {
-          \caption{Tally server overhead on Titan Cray XK6 as a function
+          \caption{Tally server overhead on Titan Cray XK7 as a function
             of data per event with $c/s = 1$.}
           \label{fig:titan-r1}
         } {\includegraphics[width=3.4in]{figures/ch6/results_titan_r1}}
     \ffigbox[\FBwidth] {
-          \caption{Tally server overhead on Titan Cray XK6 as a function
+          \caption{Tally server overhead on Titan Cray XK7 as a function
             of data per event with $c/s = 3$.}
           \label{fig:titan-r3}
         } {\includegraphics[width=3.4in]{figures/ch6/results_titan_r3}}
@@ -969,12 +933,12 @@ for $c/s = 1$, $c/s = 3$, $c/s = 7$, and $c/s = 15$ is shown in
   }
   \begin{floatrow}
     \ffigbox[\FBwidth] {
-          \caption{Tally server overhead on Titan Cray XK6 as a function
+          \caption{Tally server overhead on Titan Cray XK7 as a function
             of data per event with $c/s = 7$.}
           \label{fig:titan-r7}
         } {\includegraphics[width=3.4in]{figures/ch6/results_titan_r7}}
     \ffigbox[\FBwidth] {
-          \caption{Tally server overhead on Titan Cray XK6 as a function
+          \caption{Tally server overhead on Titan Cray XK7 as a function
             of data per event with $c/s = 15$.}
           \label{fig:titan-r15}
         } {\includegraphics[width=3.4in]{figures/ch6/results_titan_r15}}
@@ -998,7 +962,7 @@ out to study.
 \begin{figure}[!tbh]
   \centering
   \includegraphics[width=4in]{figures/ch6/results_titan_cs}
-  \caption{Tally server overhead on Titan Cray XK6 as a function of $p$ for $d =
+  \caption{Tally server overhead on Titan Cray XK7 as a function of $p$ for $d =
     15360$.}
   \label{fig:titan-cs}
 \end{figure}
@@ -1006,15 +970,14 @@ out to study.
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
 
-In the present work, an algorithm for decomposing large tally data in Monte
-Carlo particle simulations was proposed, analyzed, and implemented/tested in a
-production Monte Carlo code, OpenMC. The algorithm relies on disjoint sets of
-compute processes and servers of which the former simulate particles moving
-through the geometry and the latter runs in a continuous loop receiving scores
-from the compute processors and incrementing tallies. This algorithm potentially
-allows the end user to dramatically increase the overall tally memory footprint
-and therefore enables the potential to carry out full core fuel depletion
-calculations.
+An algorithm for decomposing large tally data in Monte Carlo particle transport
+simulations was proposed, analyzed, and implemented/tested in OpenMC. The
+algorithm relies on disjoint sets of compute processes and servers of which the
+former simulate particles moving through the geometry and the latter runs in a
+continuous loop receiving scores from the compute processors and incrementing
+tallies. This algorithm potentially allows the end user to dramatically increase
+the overall tally memory footprint and therefore enables the potential to carry
+out full core fuel depletion calculations.
 
 The proposed algorithm is only of practical value if the communication penalty
 resulting from tally decomposition is reasonable relative to the key timescales
@@ -1036,17 +999,16 @@ One point that was made earlier was that the algorithm presented here does not
 reduce the burden of large cross section data. For realistic reactor analysis,
 cross section data may well reach into the hundreds of gigabytes owing to the
 fact that cross section libraries would be needed at a multitude of
-temperatures. That being said, there is a considerable amount of research and
-development in the area of on-the-fly evaluation of effective cross sections at
-any temperature. We mention in passing two promising efforts to that end --- the
-work of Yesilyurt on on-the-fly Doppler broadening \cite{nse-yesilyurt-2012} and
-the work of Viitanen on explicit temperature treatment
-\cite{nse-viitanen-2012}. The latter development would enable simulation using 0
-K cross sections but with a significant performance penalty. In general, this
-and other improvements in physics methods will likely lead to slower simulations
-but with higher fidelity. From the perspective of the tally server model, these
-developments will increase $\mu$ and consequently decrease the communication
-overhead.
+temperatures. In \autoref{sec:cross-section-memory}, we had discussed two
+promising efforts in the area of on-the-fly evaluation of effective cross
+sections at any temperature --- the work of Yesilyurt on on-the-fly Doppler
+broadening \cite{nse-yesilyurt-2012} and the work of Viitanen on explicit
+temperature treatment \cite{nse-viitanen-2012}. The latter development would
+enable simulation using 0 K cross sections but with a significant performance
+penalty. In general, this and other improvements in physics methods will likely
+lead to slower simulations but with higher fidelity. From the perspective of the
+tally server model, these developments will increase $\mu$ and consequently
+decrease the communication overhead.
 
 On the hardware end, improvements in supercomputer architectures may continue to
 reduce network latency and improve bandwidth, at least in the short-term. Again,

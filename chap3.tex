@@ -18,8 +18,8 @@ create $M$ fission sites\footnote{The production of fission sites is weighted
   such that expected value of $M$ is $N$. However, in any given generation, it
   is unlikely that $M=N$ exactly.} that are stored in the fission bank. To
 ensure that the neutron population does not grow or shrink exponentially, $N$
-source sites for the next generation are sampled from the $M$ fission bank sites
-that were stored randomly.
+source sites for the next generation are randomly sampled from the $M$ fission
+bank sites that were stored.
 
 A common requirement in Monte Carlo particle transport codes is that a parallel
 calculation should reproduce the same answers as a serial calculation ---
@@ -38,12 +38,17 @@ In \autoref{sec:master-slave}, we present an analysis of a master-slave parallel
 algorithm for fission source site sampling and redistribution and elucidate its
 limitations. In \autoref{sec:nearest-neighbor}, we introduce a novel algorithm
 with a nearest-neighbor communication pattern and present a theoretical analysis
-that confirms our intuition that it should scale better the master-slave
-algorithm. Both algorithms were implemented in OpenMC and measurements were
-taken to validate the theoretical analysis, the results of which are discussed
-in \autoref{sec:fission-bank-validation}.
+that confirms our intuition that it should scale better than the master-slave
+algorithm. Measurements taken within OpenMC to validate the theoretical analysis
+are reported in \autoref{sec:fission-bank-validation}. Both algorithms were
+implemented in OpenMC to compare their performance and demonstrate scalability
+of the nearest-neighbor algorithm on contemporary supercomputers, the results of
+which are discussed in \autoref{sec:fission-bank-results}. Finally,
+miscellaneous considerations such as load balancing and fault tolerance are
+briefly discussed in \autoref{sec:fission-bank-other}.
 
-% TODO: Finish discussion here.
+The material in this chapter largely follows from a paper published in
+\emph{Nuclear Science and Engineering} \cite{nse-romano-2012}.
 
 \section{Master-Slave Algorithm}
 \label{sec:master-slave}
@@ -72,7 +77,7 @@ following manner \cite{lanl-x5-2008}:
   implies that this step is $O(N)$.
 \item The master process sorts or orders the fission sites based on a unique
   identifier. While a naïve sort would require $O(N \log N)$ steps on average,
-  Brown outlines a reordering algortihm in \cite{trans-brown-1992} that can
+  Brown outlines a reordering algorithm in \cite{trans-brown-1992} that can
   reduce this to $O(N)$.
 \item The master process samples $N$ fission sites from the ordered array of $M$
   sites. This requires a loop over all fission sites and thus, by the same logic
@@ -91,15 +96,6 @@ at best. In practice, it is the network communication that becomes prohibitive
 and prevents scalability, so we will thus focus our efforts on analyzing the
 communication cost.
 
-While the algorithmic complexity alone should tell us that this algorithm will
-not scale, it is instructive to look at a hypothetical example to understand how
-much communication is involved. Suppose that a calculation is run with $N =
-10,000,000$ neutrons across 64 processes. On average, $M = 10,000,000$ fission
-sites will be produced. If the data for each fission site consists of a spatial
-location (three 8 byte real numbers) and a unique identifier (one 8 byte
-integer), the memory required per site is 32 bytes. To broadcast 10,000,000
-source sites to 64 processes will thus require transferring over 20 GB of data.
-
 To estimate the communication cost of the master-slave algorithm, we will
 introduce a simple latency-bandwidth model. In this model, we assume that the
 time that it takes to send a message between two processes is given by $\alpha +
@@ -115,12 +111,6 @@ these messages is
   \label{eq:t-send}
   t_{\text{send}} = p\alpha + dN\beta.
 \end{equation}
-Generally, the best parallel performance is achieved in a weak scaling scheme
-where the total number of particles is proportional to the number of
-processors. However, we see that when $N$ is proportional to $p$, the time to
-send these messages increases proportionally with $p$.
-% TODO: Move the end portion?
-
 Estimating the time of the broadcast is complicated by the fact that different
 MPI implementations may use different algorithms to perform collective
 communications. Worse yet, a single implementation may use a different algorithm
@@ -186,10 +176,9 @@ sites banked from the previous generation, it is common in the master-slave
 algorithm for a fission site to be banked on one process, sent back to the
 master, and finally sent back to the same process as a source site. As a result,
 much of the communication inherent in the master-slave algorithm is entirely
-unnecessary. By keeping the fission sites local, having each slave process
-sample fission sites, and sending sites between processes only as needed, one
-can cut down on most of the communication. One algorithm to achieve this is as
-follows:
+unnecessary. By allowing each process to store and sample fission sites locally
+and sending sites between processes only as needed, one can cut down on most of
+the communication. The proposed algorithm to achieve this works as follows:
 \begin{enumerate}
 \item An exclusive scan is performed on the number of sites banked, and the
   total number of fission bank sites is broadcasted to all processes. By
@@ -231,13 +220,11 @@ bank sites to continue on the next generation. Suppose that process $p_0$
 produces 270 fission banks sites, $p_1$ produces 230, $p_2$ produces 290, and
 $p_3$ produces 250. After each process samples from its fission bank sites,
 let's assume that $p_0$ has 260 source sites, $p_1$ has 215, $p_2$ has 280, and
-$p_3$ has 255. Note that the total number of sampled sites is greater than
-1,000. In this case, the 10 extra sites at the end of the bank are simply
-discarded. For each process to have the same number of source sites, $p_0$ needs
-to send its right-most 10 sites to $p_1$, and $p_2$ needs to send its left-most
-25 sites to $p_1$ and its right-most 5 sites to $p_3$. A schematic of this
-example is shown in \autoref{fig:nearest-neighbor-example}. The data local to
-each process is given a different hatching, and the cross-hatched regions
+$p_3$ has 245. For each process to have the same number of source sites, $p_0$
+needs to send its right-most 10 sites to $p_1$, and $p_2$ needs to send its
+left-most 25 sites to $p_1$ and its right-most 5 sites to $p_3$. A schematic of
+this example is shown in \autoref{fig:nearest-neighbor-example}. The data local
+to each process is given a different hatching, and the cross-hatched regions
 represent source sites that are communicated between logically adjacent process.
 \begin{figure}[ht!]
   \centering
@@ -251,7 +238,7 @@ not trivial due to the fact that the cost will be a function of how many fission
 sites are sampled on each process. If each process samples exactly $N/p$ sites,
 it would not be necessary to communicate any fission bank sites. However, if any
 one process samples more or less than $N/p$ sites, the deviation will result in
-communication between logically adjacent nodes. To determine the expected
+communication between logically adjacent processes. To determine the expected
 deviation, let us analyze the algorithm based on the fundamentals of the Monte
 Carlo process.
 
@@ -262,27 +249,21 @@ written in the form of an eigenvalue problem \cite{nukleonik-lieberoth-1968},
   S(\mathbf{r})= \frac{1}{k} \int F(\mathbf{r}' \rightarrow
   \mathbf{r})S(\mathbf{r}')\: d\mathbf{r},
 \end{equation}
-where,
-\begin{align*}
-  \mathbf{r} = &\: \text{spatial coordinates of phase space} \\ S (\mathbf{r})=
-  &\: \text{source distribution defined as the expected number of neutrons}
-  \\ &\: \text{born from fission per unit phase-space volume at $\mathbf{r}$}
-  \\ F( \mathbf{r}' \rightarrow \mathbf{r})= &\: \text{expected number of
-    neutrons born from fission per unit} \\ &\: \text{phase space volume at
-    $\mathbf{r}$ caused by a neutron at $\mathbf{r}'$} \\ k = &\:
-  \text{eigenvalue}.
-\end{align*}
-The fundamental eigenvalue of Eq. \eqref{eq:NTE} is known as $k_{eff}$, but for
-simplicity we will simply refer to it as $k$.
+where $\mathbf{r}$ is the spatial coordinates of phase space, $S(\mathbf{r})$ is
+the source distribution defined as the expected number of neutrons born from
+fission per unit phase-space volume at $\mathbf{r}$, $F( \mathbf{r}' \rightarrow
+\mathbf{r})$ is the expected number of neutrons born from fission per unit phase
+space volume at $\mathbf{r}$ caused by a neutron at $\mathbf{r}'$, and $k$ is
+the fundamental mode eigenvalue.
 
 In a Monte Carlo eigenvalue calculation, the power iteration method is applied
 iteratively to obtain stochastic realizations of the source distribution and
 estimates of the $k$-eigenvalue. Let us define $\hat{S}^{(m)}$ to be the
 realization of the source distribution at fission generation $m$ and
-$\hat{\epsilon}^{(m)}$ be the deviation from the deterministic solution arising
-from the stochastic nature of the tracking process. We can write the stochastic
-realization in terms of the fundamental source distribution and the fluctuating
-component as \cite{ane-brissenden-1986}
+$\hat{\epsilon}^{(m)}$ to be the deviation from the deterministic solution
+arising from the stochastic nature of the tracking process. We can write the
+stochastic realization in terms of the fundamental source distribution and the
+fluctuating component as \cite{ane-brissenden-1986}
 \begin{equation}
   \label{eq:source}
   \hat{S}^{(m)}(\mathbf{r})= N S(\mathbf{r}) + \sqrt{N}
@@ -391,7 +372,7 @@ send two messages, many of these messages will overlap. Rather than trying to
 determine the actual communication cost, we will instead attempt to determine
 the maximum amount of data being communicated from one process to another. At
 any given generation, the number of fission sites that the $j$th process will
-send or receive ($\Lambda_j$) is
+send or receive, $\Lambda_j$, is
 \begin{equation}
   \label{eq:Lambda}
   \Lambda_j = \left | \sum_{i=1}^j M_i - \frac{jN}{p} \right |.
@@ -475,7 +456,8 @@ absolute deviation of $\sum_{i=1}^j M_i$, is proportional to
   \label{eq:comm-cost}
   E \left [ \Lambda_j \right ] = \sqrt{\frac{2Nj(p-j)\sigma^2}{\pi k^2p^2}}.
 \end{equation}
-This formula has all the properties that one would expect based on intuition:
+Equation \eqref{eq:comm-cost} has all the properties that one would expect based
+on intuition:
 \begin{itemize}
 \item As the number of particle histories increases, the communication cost on
   each process increases as well;
@@ -488,9 +470,9 @@ This formula has all the properties that one would expect based on intuition:
 We can determine the process that has the highest communication cost by
 differentiating \eqref{eq:comm-cost} with respect to $j$, setting it equal to
 zero, and solving for $j$. Doing so yields $j_{\text{max}} =
-p/2$. Interestingly, substituting $j = p/2$ in \eqref{eq:comm-cost} shows us
+p/2$. Interestingly, substituting $j = p/2$ in \eqref{eq:comm-cost} indicates
 that the maximum communication cost is actually independent of the number of
-nodes:
+processes:
 \begin{equation}
   \label{eq:nn-cost-max}
   E \left [ \Lambda_{j_{\text{max}}} \right ] = \sqrt{ \frac{N\sigma^2}{2\pi
@@ -519,22 +501,38 @@ we find that
 \end{equation}
 In the limit of large $p$, this ratio becomes
 \begin{equation}
+  \label{eq:t-ratio-limit}
   \lim_{p\rightarrow\infty}
   \frac{t_{\text{master-slave}}}{t_{\text{nearest-neighbor}}} =
   \sqrt{\frac{N\pi}{2}} \cdot \frac{3k}{\sigma}.
 \end{equation}
 
+We can see from \eqref{eq:t-nearest-neighbor} that the nearest-neighbor
+algorithm requires $O(\sqrt{N})$ time instead of $O(N)$ as for the master-slave
+algorithm. This should allow the the algorithm to scale to very large numbers of
+total processes or particles per generation. In fact, we can show that
+arbitrarily good scaling can be achieved. Let $t$ be the time to simulate $N$
+particles on $p$ processors. Expressing the network communication time as a
+fraction of the time to simulate the particles, we find that:
+\begin{equation}
+  \frac{t_{\text{nearest-neighbor}}}{t} \propto \frac{\sqrt{N}}{N/p} \propto
+  \frac{p}{\sqrt{N}}
+\end{equation}
+Thus, if we keep $p$ constant and increase $N$, the relative time to complete
+network communication will be reduced since the simulation time is proportional
+to $N$ and the communication is proportional to $\sqrt{N}$.
+
 \section{Validation of Theoretical Analysis}
 \label{sec:fission-bank-validation}
 
 To ensure that any assumptions made in the foregoing analysis are sound, several
-test cases were run to compare experimental results with the theoretical
-analysis using an implementation of the nearest-neighbor fission bank algorithm
-in OpenMC. The number of processes and particle histories for each case are
-shown in \autoref{tab:cases}.
+test cases using an implementation of the nearest-neighbor fission bank
+algorithm in OpenMC were run to provide results that can be compared with the
+theoretical analysis. The number of processes and particle histories for each
+case are shown in \autoref{tab:cases}.
 \begin{table}[ht!]
   \centering
-  \caption{Four test cases for nearest-neighbor fission bank algorithm.}
+  \caption{Test cases for nearest-neighbor fission bank algorithm.}
   \label{tab:cases}
   \begin{tabular}{ c c c }
     \toprule
@@ -568,30 +566,30 @@ and 4 along with the predicted fits.
 \begin{figure}[ht!]
   \centering
   \includegraphics[width=0.75\textwidth]{figures/ch3/mean_deviance/plot8.pdf}
-  \caption{Expected number of fission bank sites sent to neighboring nodes using
-    8 compute nodes}
+  \caption{Expected number of fission bank sites sent to neighboring processes
+    using 8 processes.}
   \label{fig:mean-deviance8}
 \end{figure}
 \begin{figure}[ht!]
   \centering
   \includegraphics[width=0.75\textwidth]{figures/ch3/mean_deviance/plot16.pdf}
-  \caption{Expected number of fission bank sites sent to neighboring nodes using
-    16 compute nodes}
+  \caption{Expected number of fission bank sites sent to neighboring processes
+    using 16 processes.}
   \label{fig:mean-deviance16}
 \end{figure}
 A few observations can be made from these figures. Firstly, the data from the
 four test cases demonstrates that the foregoing theoretical analysis is indeed
 correct. Furthermore, one can observe from these two figures that the maximum
-communication does occur for node $j_{\text{max}} = p/2$ and that this maximum
-is indeed independent of $p$ as predicted.
+communication does occur for process $j_{\text{max}} = p/2$ and that this
+maximum is independent of $p$ as predicted.
 
 It is also instructive to check our assumption that $\sum_{i=1}^j M_i$ is
 normally distributed. One way of doing this is through a quantile-quantile (Q-Q)
 plot, comparing the observed quantiles of the data with the theoretical
 quantiles of the normal distribution. If the data are normally distributed, the
 points on the Q-Q plot should lie along a line. \autoref{fig:QQ-plot} shows a
-Q-Q plot for the number of fission bank sites sent or received on the first node
-for the Case 1.
+Q-Q plot for the number of fission bank sites sent or received on the first
+process for Case 1.
 \begin{figure}[ht!]
   \centering
   \includegraphics[width=0.75\textwidth,angle=-90]{figures/ch3/QQ_plot/QQplot.pdf}
@@ -602,198 +600,157 @@ The data clearly lie along a straight line and thus the data are normally
 distributed. This conclusion was also confirmed using the Shapiro-Wilk test for
 normality \cite{biometrika-shapiro-1965}.
 
-\subsection{Comparison of Communication Costs}
+\section{Results}
+\label{sec:fission-bank-results}
 
-To fully appreciate what this means, we can infer values of $\sigma$ and $k$
-from the aforementioned test cases to determine what the ratio actually
-is. Recall that $\sigma$ tells us how much stochastic noise there is in the
-integrated fission source. The sample standard deviation for our validation
-cases was $\sigma = 1.73$. Using this value and $k = 1$, we estimate that the
-novel algorithm would be about 2,000 times faster than the traditional algorithm
-for $N = 1,000,000$. Also note that as $N$ increases, the novel algorithm will
-outperform the traditional algorithm by an even wider margin.
+\subsection{Communication Time}
 
-To determine the actual performance of the novel algorithm relative to the
-traditional algorithm, both algorithms were implemented in the aforementioned
-simple Monte Carlo code. A separate simulation using each of the algorithms was
-run from a single compute node up to 88 compute nodes in parallel. In each case,
-the number of histories was 40,000 times the number of compute nodes so that
-each compute node simulates the same number of histories. Each simulation was
-run for 20 cycles. \autoref{fig:algorithm-time} shows the total time spent on
-fission bank synchronization for the traditional and novel algorithms.
+In \autoref{sec:nearest-neighbor}, it was shown that the communication cost of
+nearest neighbor algorithm will depend on a parameter $\sigma$ representing the
+variance in the number of sites sent between adjacent processes. Thus, while we
+can conclude from \eqref{eq:t-ratio-limit} that the nearest-neighbor algorithm
+will certainly outperform the master-slave algorithm in the limit of large $p$
+and $N$, it is more difficult to make inferences regarding the performance of
+the two algorithms for smaller cases.
+
+In order to compare the two algorithms, both were implemented in OpenMC. A
+separate simulation using each of the algorithms was run from a single process
+up to 88 processes in parallel on a small cluster with an Ethernet network
+interconnect. In each case, the number of histories was 40,000 times the number
+of processes so that each process simulates the same number of histories. Each
+simulation was run for 20 fission generations. \autoref{fig:algorithm-time}
+shows the total time spent on fission bank synchronization for the two
+algorithms.
 \begin{figure}[ht!]
   \centering
   \includegraphics[width=0.75\textwidth]{figures/ch3/algorithm_results/time.pdf}
-  \caption{Execution time for fission bank algorithms}
+  \caption{Execution time for fission bank algorithms.}
   \label{fig:algorithm-time}
 \end{figure}
-We see that the performance of the novel algorithm doesn't quite meet the
-predicted performance based on the above analysis, but this is not surprising
-given the number of simplifying assumptions made in the course of the
-analysis. Most importantly, we have ignored the time spent sampling fission
-sites and copying data in memory which may become non-negligible for large
-$N$. Notwithstanding, the new algorithm performs nearly two orders of magnitude
-faster than the traditional algorithm for large $p$ and large $N$.
+We see that the the nearest-neighbor algorithm performs nearly two orders of
+magnitude faster than the master-slave algorithm for large $p$ and large $N$. In
+these simulations, we have ignored the time spent sampling fission sites and
+copying data in memory which may become non-negligible for large $N$. Thus, to
+truly demonstrate scalability, simulations with much larger $N$ and $p$ are
+needed.
+
+\subsection{Parallel Scaling}
+
+To test parallel scaling, an OpenMC model of the Monte Carlo Performance
+Benchmark was simulated on both the Blue Gene/P at the Argonne Leadership
+Computing Facility (Intrepid) and the Cray XK6 at the Oak Ridge Leadership
+Computing Facility (Jaguar) using the nearest-neighbor fission bank
+algorithm. On the Blue Gene/P, up to 163,840 cores were used with 4000 particles
+per processor core per generation. On the Cray XK6, up to 131,072 cores were
+used with 20,000 particles per processor core per generation. For this study,
+the total work per processor was kept constant (weak scaling) rather than the
+total amount of work over all processors (strong scaling). \autoref{fig:scaling}
+shows the effective number of particles simulated per second as a function of
+the number of processors in comparison to the ideal calculation rate (assuming
+no communication between fission source iterations). Excellent parallel
+efficiency is achieved even above 100,000 processors.
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=0.9\textwidth]{figures/ch3/scaling/scaling_loglog.pdf}
+  \caption{Parallel scaling for the Monte Carlo Performance Benchmark on the
+    Cray XK6 (Jaguar) and Blue Gene/P (Intrepid) supercomputers.}
+  \label{fig:scaling}
+\end{figure}
+
+A few notes should be made regarding the achieved scaling shown in
+\autoref{fig:scaling}. First, it was necessary to use non-blocking communication
+semantics rather than blocking communication; when blocking communication was
+attempted, the scaling behavior was observed to be much worse. Additionally, it
+was necessary to turn off the calculation of Shannon entropy during the
+simulations. In OpenMC, the number of mesh cells used for the Shannon entropy
+mesh grows linearly with the number of particles per generation. At the end of
+the fission generation, the number of source sites in each mesh cell has to be
+reduced from all processes before being used in \eqref{eq:shannon-entropy}. As
+such, in a series of weak scaling runs, the communication associated with
+calculating Shannon entropy would grow linearly with the number of processors
+--- turning off the calculation of Shannon entropy circumvents this.
 
 \section{Other Considerations}
-\label{sec:other}
-
-A discussion of any parallel algorithm for Monte Carlo codes would not be
-complete without considering how to achieve high parallel efficiency on
-heterogeneous architectures and how to maintain reproducibility of results. In
-this section, we will discuss how load balancing requirements may affect the
-proposed algorithm and reproducibility as well as briefly mentioning the impact
-of fault tolerance.
+\label{sec:fission-bank-other}
 
 \subsection{Load Balancing}
-\label{load-balancing}
 
 One important requirement for a parallel Monte Carlo calculation is proper
-load-balancing, i.e. it is undesirable to have a compute node sitting idle with
-no work to do while other compute nodes are still busy working. This is
-especially the case when the hardware architecture is heterogeneous (having
-different types of processors in a single cluster). In the traditional parallel
-algorithm, work self-scheduling is achieved by having each slave node request
-small batches of work from the master, and as each batch is completed, the slave
-may request more work. By breaking up the problem into smaller batches, this
-ensures that in a single source iteration, a processor that is twice as fast as
-another processor will also be assigned twice as many histories to compute, and
-thus all processors should finish their work at approximately the same time
-(assuming that the time to complete a single history is constant irrespective of
-its properties).
+load-balancing, i.e. it is undesirable to have a process sitting idle with no
+work to do while other processes are still busy working. This is especially the
+case when the hardware architecture is heterogeneous (having different types of
+processors in a single cluster). In the master-slave algorithm, work
+self-scheduling is achieved by having each slave process request small batches
+of work from the master, and as each batch is completed, the slave may request
+more work. By breaking up the problem into smaller batches, this ensures that in
+a single source iteration, a processor that is twice as fast as another
+processor will also be assigned twice as many histories to compute, and thus all
+processors should finish their work at approximately the same time.
 
-The novel algorithm we have presented here precludes the use of the
+The nearest-neighbor algorithm unfortunately precludes the use of the
 aforementioned self-scheduling algorithm since an important aspect of the
-algorithm is to assign histories sequentially to the nodes to preserve their
-order. It should be noted that if one did not care to preserve reproducibility
-in a calculation, the self-scheduling scheme could easily be applied for
-load-balancing with the new fission bank algorithm.
+algorithm is to assign particle histories sequentially to the processes to
+preserve their order. It should be noted that if one did not care to preserve
+reproducibility in a calculation, the self-scheduling scheme could easily be
+applied for load-balancing with the nearest-neighbor fission bank algorithm.
 
-When used on a homogeneous cluster, we don't foresee a great loss in efficiency
-due to the lack of load balancing in the novel algorithm. Studies using MCNP on
-a homogeneous Linux cluster have shown a 5-10\% loss in parallel efficiency when
-not using any sort of load balancing \cite{lanl-brown-2005}.
+The results in \autoref{fig:scaling} demonstrate that the lack of a load
+balancing mechanism does not degrade parallel efficiency when used on a
+homogeneous cluster. Previous studies using MCNP on a homogeneous Linux cluster
+have shown a 5-10\% loss in parallel efficiency when not using any sort of load
+balancing \cite{lanl-brown-2005}.
 
 It is also possible to employ a basic means of load balancing for heterogeneous
-architectures in the fission bank algorithm presented here by ``tuning'' the
+architectures using in the nearest-neighbor algorithm by ``tuning'' the
 algorithm to the specific characteristics of the cluster. If one were to measure
 the performance of each type of processor on the cluster in terms of particles
 processed per second, the number of histories on each processor could be
 adjusted accordingly instead of merely distributing particles uniformly ($N/p$
 on each processor).
 
-\subsection{Ordering of the Fission Bank}
-
-The order of the fission sites produced at the end of a source iteration will
-depend on the order in which the particle histories were processed. Thus, if a
-calculation is run in parallel using the master-slave load balancing scheme
-described above, the order of the fission sites is not guaranteed to be
-reproducible since the order in which the particle histories are simulated will
-depend on the actions of independent processors. It is thus necessary to sort or
-re-order the fission sites since the sampling of source sites depends on this
-ordering in order to obtain a reproducible result.
-
-A traditional sorting of the fission bank would be done using a standard
-quicksort that can be completed in $O(N \log N)$ steps. Brown and Sutton
-developed a method of re-ordering the fission sites that can be done in $O(N)$
-steps \cite{trans-brown-1992}. Anecdotally, we have observed that in systems
-using a high-speed network interconnect such as InfiniBand, the sorting of the
-fission bank is the major contributor to decreased parallel efficiency in
-fission bank synchronization.
-
-Using the fission bank algorithm we have developed herein, the order in which
-particle histories are processed is always the same since we simply allocate the
-first set of $N/p$ particles to the first processor, the second set of $N/p$
-particles to the second processor, etc. Thus, it is not necessary to sort or
-re-order the fission bank in order to preserve reproducibility of results.
-
 \subsection{Fault Tolerance}
 
-On a parallel architecture with a large number of processors, network
-interconnects, hard disks, and memory, it is desirable to have some means of
-fault tolerance to ensure that not all results are lost in the event of a
-hardware failure. In current Monte Carlo codes, this can be achieved by having
-the slave nodes periodically rendezvous and having a single processor dump data
-to a file that can be used to restart the run. While providing insurance against
-lost simulation time, performing fault tolerance this way unfortunately degrades
+For petascale and future exascale architectures, it is desirable to have some
+means of fault tolerance to ensure that not all results are lost in the event of
+a hardware failure. In current Monte Carlo codes, this can be achieved by having
+all processes periodically rendezvous and collectively dump data to a file that
+can be used to restart the run. While providing insurance against lost
+simulation time, performing fault tolerance this way unfortunately degrades
 parallel performance since it entails collective communication between all
 processors. Notwithstanding, the algorithm we have presented here does not
 inhibit the use of fault tolerance in this manner.
 
-\section{Performance Testing}
-
-Evaluating the performance of any parallel algorithm is made difficult by the
-fact that there are a vast number of factors which may affect parallel
-performance. For example, running a simulation on very slow processors may yield
-very good parallel scaling whereas the same simulation run on fast processors
-may show poor parallel scaling due merely to the relative amount of computation
-and communication. Monte Carlo criticality calculations have shown reasonable
-parallel performance on multi-core desktop and moderately sized
-clusters. However, to date, no one has demonstrated parallel scaling past a few
-hundred processors.
-
-To determine the actual performance of the novel algorithm, it was implemented
-in the OpenMC Monte Carlo code \cite{ane-romano-2013}. A simple model was then
-constructed and simulated on the Jaguar XT5 supercomputer at the National Center
-for Computational Sciences and Oak Ridge National Laboratory. The Jaguar XT5
-contains 18,688 compute nodes, each with dual hex-core AMD Opteron 2435
-processors running at 2.6 GHz. In total, there are over 200,000 total processors
-available.
-
-A weak parallel scaling scheme was run with a fixed number of particles per
-processor. The base case was run with 960 processors running 160,000,000
-particles per cycle. Then, each successive run doubled the number of processors
-and particles. The last case was run with 15,360 processors running 2.56 billion
-particles per history. \autoref{fig:jaguar-scaling} shows the near-linear
-parallel scaling of OpenMC with the novel fission bank algorithm up to 15,360
-processors.
-\begin{figure}[ht!]
-  \centering
-  \includegraphics[width=0.9\textwidth]{figures/ch3/jaguar_results/jaguar.pdf}
-  \caption{Parallel speedup on Jaguar XT5 supercomputer.}
-  \label{fig:jaguar-scaling}
-\end{figure}
-Note that with 15,360 processors, the code is simulating about 600 million
-particle histories per second.
-
 \section{Conclusions}
 \label{sec:conclusions}
 
-We have presented a new method for parallelizing the source iterations in a
-Monte Carlo criticality calculation. This algorithm takes advantage of the fact
-that many of the fission sites produced on one processor can be used as source
-sites on that same processor and avoids unnecessary communication between
-processors.
+In this chapter, we presented a new algorithm for parallelizing the source
+iterations in a Monte Carlo criticality calculation. This algorithm takes
+advantage of the fact that many of the fission sites produced on one processor
+can be used as source sites on that same processor --- in doing so, it avoids
+unnecessary communication between processors.
 
 Analysis of the algorithm shows that it should outperform existing algorithms
 for fission bank synchronization and that furthermore, the performance gap
-increases for an increasing number of histories or processors. Test results on a
-simple 3D structured mesh Monte Carlo code confirm this finding. The analysis
-also shows that the maximum amount of communication in the algorithm is
-independent of the number of processors and instead will depend on the number of
-histories per cycle and the physical characteristics of the problem at
-hand. Again, testing using our simple Monte Carlo code confirm this prediction.
+increases for an increasing number of histories or processors. Test results on
+the OpenMC Monte Carlo code confirm this finding. The analysis also shows that
+the maximum amount of communication in the algorithm is independent of the
+number of processors and instead will depend on the number of histories per
+cycle and the physical characteristics of the problem at hand. Again, testing
+within OpenMC confirms this prediction. Finally, a scaling study was performed
+on the Titan and Intrepid supercomputers and demonstrated perfect scaling with
+over 100,000 processor cores using the nearest-neighbor algorithm.
 
 The reader should keep in mind that while the algorithm presented here will
 significantly improve the time necessary to sample and distribute fission sites
 between cycles, it has no effect on the actual transport simulation of particles
-moving through a geometry. Thus, it will not improve smaller simulations that
-would typically run on a workstation. However, for large simulations that
+moving through a material medium. Thus, it will not improve smaller simulations
+that would typically run on a workstation. However, for large simulations that
 necessitate the use of a large cluster or supercomputer to complete in a
 reasonable amount of time, this novel algorithm will improve the parallel
-efficiency and is an important step in achieving scalability up to thousands of
-processors.
+efficiency and is an important step in achieving scalability up to thousands or
+millions of processors.
 
-Potential shortcomings of the present algorithm include the inability to provide
-load balancing using existing algorithms for heterogeneous computer
+One potential shortcoming of the present algorithm is that it precludes the use
+of load balancing via existing algorithms for heterogeneous computer
 architectures. A basic method to provide load balancing in such situations based
-on ``tuning'' the algorithm was suggested, although it has not be tested as of
-yet.
-
-% TODO: Discussion of arbitrarily good scaling
-
-% TODO: Impact of Shannon entropy
-
-% TODO: Non-blocking versus blocking
-
-% TODO: Discarding last sites
+on ``tuning'' the algorithm was suggested, although it has not yet been tested.

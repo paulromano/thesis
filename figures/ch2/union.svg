@@ -7,10 +7,34 @@
    xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
    xmlns:svg="http://www.w3.org/2000/svg"
    xmlns="http://www.w3.org/2000/svg"
+   xmlns:sodipodi="http://sodipodi.sourceforge.net/DTD/sodipodi-0.dtd"
+   xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    version="1.1"
    width="452"
    height="272"
-   id="svg2">
+   id="svg2"
+   inkscape:version="0.48.3.1 r9886"
+   sodipodi:docname="union.svg">
+  <sodipodi:namedview
+     pagecolor="#ffffff"
+     bordercolor="#666666"
+     borderopacity="1"
+     objecttolerance="10"
+     gridtolerance="10"
+     guidetolerance="10"
+     inkscape:pageopacity="0"
+     inkscape:pageshadow="2"
+     inkscape:window-width="1366"
+     inkscape:window-height="712"
+     id="namedview22"
+     showgrid="false"
+     inkscape:zoom="1.827214"
+     inkscape:cx="226"
+     inkscape:cy="136"
+     inkscape:window-x="0"
+     inkscape:window-y="27"
+     inkscape:window-maximized="1"
+     inkscape:current-layer="svg2" />
   <defs
      id="defs4" />
   <metadata
@@ -21,85 +45,94 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
-  <g
-     transform="translate(-109,-151.36218)"
-     id="layer1">
-    <path
-       d="m 490,287.36218 a 150,85 0 1 1 -300,0 150,85 0 1 1 300,0 z"
-       id="path2987"
-       style="fill:none;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
-    <path
-       d="m 151,-22.503909 0,269.999999"
-       transform="translate(189,174.86609)"
-       id="path3817"
-       style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
-    <path
-       d="m -79,127.49609 450,0"
-       transform="translate(189,174.86609)"
-       id="path3819"
-       style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
-    <path
-       d="m 152.14286,162.63371 0,-33.57143 72.14285,0 c 39.67858,0 72.14286,0.1556 72.14286,0.34577 0,0.83636 -4.22498,8.93075 -6.5305,12.51137 -1.39125,2.16072 -4.89349,6.45329 -7.78275,9.53904 -19.70935,21.04977 -54.95495,36.54118 -96.04389,42.21394 -7.56736,1.04476 -25.70992,2.51107 -31.25,2.52568 l -2.67857,0.007 0,-33.57143 z"
-       transform="translate(189,174.86609)"
-       id="path3821"
-       style="fill:#aab4ff;fill-opacity:1;stroke:none" />
-    <text
-       x="210"
-       y="222.36218"
-       id="text3823"
-       xml:space="preserve"
-       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Sans"><tspan
-         x="210"
-         y="222.36218"
-         id="tspan3825">+1</tspan></text>
-    <text
-       x="240"
-       y="242.36218"
-       id="text3823-0"
-       xml:space="preserve"
-       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Sans"><tspan
-         x="240"
-         y="242.36218"
-         id="tspan3825-1">-1</tspan></text>
-    <text
-       x="315"
-       y="262.36218"
-       id="text3823-0-5"
-       xml:space="preserve"
-       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Sans"><tspan
-         x="315"
-         y="262.36218"
-         id="tspan3825-1-8">-2</tspan></text>
-    <text
-       x="345"
-       y="262.36218"
-       id="text3823-0-5-2"
-       xml:space="preserve"
-       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Sans"><tspan
-         x="345"
-         y="262.36218"
-         id="tspan3825-1-8-2">+2</tspan></text>
-    <text
-       x="260"
-       y="322.36218"
-       id="text3823-0-5-0"
-       xml:space="preserve"
-       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Sans"><tspan
-         x="260"
-         y="322.36218"
-         id="tspan3825-1-8-0">-3</tspan></text>
-    <text
-       x="255"
-       y="297.36218"
-       id="text3823-0-5-2-4"
-       xml:space="preserve"
-       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Sans;-inkscape-font-specification:Sans"><tspan
-         x="255"
-         y="297.36218"
-         id="tspan3825-1-8-2-2">+3</tspan></text>
-  </g>
+  <path
+     inkscape:connector-curvature="0"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+     id="path2987"
+     d="m 381,136 a 150,85 0 0 1 -300,0 150,85 0 1 1 300,0 z" />
+  <path
+     inkscape:connector-curvature="0"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+     id="path3817"
+     d="M 231,1.000001 231,271" />
+  <path
+     inkscape:connector-curvature="0"
+     style="fill:none;stroke:#000000;stroke-width:2;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
+     id="path3819"
+     d="m 1,151 450,0" />
+  <path
+     inkscape:connector-curvature="0"
+     style="fill:#aab4ff;fill-opacity:1;stroke:none"
+     id="path3821"
+     d="m 232.14286,186.13762 0,-33.57143 72.14285,0 c 39.67858,0 72.14286,0.1556 72.14286,0.34577 0,0.83636 -4.22498,8.93075 -6.5305,12.51137 -1.39125,2.16072 -4.89349,6.45329 -7.78275,9.53904 -19.70935,21.04977 -54.95495,36.54118 -96.04389,42.21394 -7.56736,1.04476 -25.70992,2.51107 -31.25,2.52568 l -2.67857,0.007 0,-33.57143 z" />
+  <text
+     sodipodi:linespacing="125%"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     xml:space="preserve"
+     id="text3823"
+     y="71"
+     x="101"><tspan
+       id="tspan3825"
+       y="71"
+       x="101"
+       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">+1</tspan></text>
+  <text
+     sodipodi:linespacing="125%"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     xml:space="preserve"
+     id="text3823-0"
+     y="91"
+     x="131"><tspan
+       id="tspan3825-1"
+       y="91"
+       x="131"
+       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">-1</tspan></text>
+  <text
+     sodipodi:linespacing="125%"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     xml:space="preserve"
+     id="text3823-0-5"
+     y="111"
+     x="206"><tspan
+       id="tspan3825-1-8"
+       y="111"
+       x="206"
+       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">-2</tspan></text>
+  <text
+     sodipodi:linespacing="125%"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     xml:space="preserve"
+     id="text3823-0-5-2"
+     y="111"
+     x="236"><tspan
+       id="tspan3825-1-8-2"
+       y="111"
+       x="236"
+       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">+2</tspan></text>
+  <text
+     sodipodi:linespacing="125%"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     xml:space="preserve"
+     id="text3823-0-5-0"
+     y="171"
+     x="151"><tspan
+       id="tspan3825-1-8-0"
+       y="171"
+       x="151"
+       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">-3</tspan></text>
+  <text
+     sodipodi:linespacing="125%"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     xml:space="preserve"
+     id="text3823-0-5-2-4"
+     y="146"
+     x="146"><tspan
+       id="tspan3825-1-8-2-2"
+       y="146"
+       x="146"
+       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">+3</tspan></text>
 </svg>

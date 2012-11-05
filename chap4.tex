@@ -1,63 +1,75 @@
 \chapter{Tally Reduction Algorithms}
 \label{chap:tally-reduction}
 
-Despite the many advances in Monte Carlo methods over the past few decades, an
-efficient parallel implementation for large-scale criticality calculations
-capable of scaling on modern petascale supercomputers has not been demonstrated
-in the literature. There are a number of factors that hinder the parallel
-performance of these calculations as discussed in several recent articles
-\cite{pnst-brown-2011, net-martin-2012}.
+In \autoref{chap:fission-bank}, a nearest-neighbor fission bank algorithm was
+proposed, implemented in OpenMC, and demonstrated to enable parallel scaling in
+Monte Carlo $k$-eigenvalue calculations with over 100,000 processors. While this
+algorithm is an important and necessary component in being able to perform
+realistic LWR analysis with Monte Carlo methods, it is only one piece of the
+puzzle. We had also identified in \autoref{chap:intro} that large tallies can
+become problematic in large-scale parallel simulations due to excessive
+communication requirements. In fact, in the scaling study in
+\autoref{sec:fission-bank-results}, no tallies were included in the runs, and
+hence the necessary network communication was greatly reduced.
 
-One traditional limitation was in the implementation of the fission bank in
-parallel. In a previous study, we developed a new parallel algorithm for banking
-fission sites in a criticality calculation \cite{nse-romano-2012}. Following the
-development and analysis of the algorithm, it was implemented in a 3D
-constructive solid geometry, continuous-energy Monte Carlo code called OpenMC. A
-test of the OpenMC code using this algorithm on the Monte Carlo Performance
-Benchmark demonstrated weak scaling up to hundreds of thousands of processors
-\cite{ane-romano-2013}. However, in that scaling study, no tallies were included
-in the runs, and hence the necessary network communication was greatly reduced.
+In this chapter, we propose a method that would greatly reduce network
+communication when performing parallel simulations with large tally data by
+using statistical batching across fission generations. In
+\autoref{sec:batch-statistics}, we first review batch statistics and their
+current utility in Monte Carlo simulations. A modified batching algorithm is
+then proposed and analyzed in \autoref{sec:tally-reduction}. The Monte Carlo
+performance benchmark was simulated using an implementation of the algorithm in
+OpenMC; the results of these tests are reported in
+\autoref{sec:tally-reduction-results}.
 
-Alongside studies on advanced parallel methods, there has also been an interest
-in methods to reduce correlation between fission source iterations. Gelbard and
-Prael first proposed a batching methodology that does exactly that
-\cite{pne-gelbard-1990}. Batch statistics have now been adopted by the MC21
-Monte Carlo code \cite{physor-kelly-2012}. Other contemporary investigations
-have looked at overlapping batch means \cite{ane-ueki-2011}. The present work
-describes an ancillary benefit of using batch statistics in parallel
-calculations.
+The algorithm being presented in this chapter was published in an article in
+\emph{Transactions of the American Nuclear Society} \cite{trans-romano-2012}.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Theory}
+\section{Batch Statistics}
+\label{sec:batch-statistics}
 
-To construct an estimate for the sample mean and its variance for a physical
-quantity in a Monte Carlo simulation, the following formulae are generally used:
+To construct an estimate for the sample mean and its variance for any tally in a
+Monte Carlo simulation, the following formulas are generally used:
 \begin{align}
-  \bar{x} &= \frac{1}{N} \sum_{i=1}^N x_i \\ s^2_{\bar{x}} &= \frac{1}{N-1}
+  \bar{x} &= \frac{1}{N} \sum_{i=1}^N x_i \\ 
+  \label{eq:variance-mean} s^2_{\bar{x}} &= \frac{1}{N-1}
   \left [ \frac{\sum_{i=1}^N x_i^2}{N} - \left ( \frac{\sum_{i=1}^N x_i}{N}
     \right )^2 \right ]
 \end{align}
 where $x_i$ is a single realization of the random variable, $\bar{x}$ is the
 sample mean, $s^2_{\bar{x}}$ is the variance of the sample mean, and $N$ is the
-number of realizations\footnote{A single realization may be the accumulated
-  score from a single particle history in a fixed-source calculation or from a
-  single fission generation in a criticality calculation.}. A few assumptions
-have been made in the use of these formulae; it is assumed that $N$ is large
-enough for the law of large numbers and the central limit theorem (CLT) to
-apply, and it is assumed that the realizations of the random variable are
-independent and identically distributed, again to satisfy conditions of the
-CLT. However, in a criticality calculation, it can be shown that there is
-significant correlation between successive realizations of the tally random
-variables due to the method of successive generations. From a physical
-perspective, this correlation arises because fission sites will only migrate so
-much from one generation to the next since the mean free path of neutrons is
-often much smaller than the overall size of the system. To overcome this
-correlation, various Monte Carlo codes instead use batch\footnote{Many people
-  use the terms ``batch'', ``generation'', and ``cycle'' interchangeably. In
-  this paper, the term ``batch'' specifically refers to the grouping of multiple
-  realizations and is generally not the same as a ``generation'' or ``cycle'' in
-  a criticality calculation.} statistics whereby $M$ successive realizations of
-the random variable are grouped into a single estimate of a new random variable:
+number of realizations. A single realization may be the accumulated score from a
+single particle history in a fixed-source calculation or from a single fission
+generation in a criticality calculation. A few assumptions have been made in the
+use of \eqref{eq:variance-mean}; it is assumed that $N$ is large enough for the
+law of large numbers and the central limit theorem (CLT) to apply, and it is
+assumed that the realizations were drawn from independent and identically
+distributed random variables, again to satisfy conditions of the CLT.
+
+In the method of successive generations used for Monte Carlo eigenvalue
+calculations, the locations of source sites in one generation may be correlated
+with the locations of source sites in a subsequent generation. This is
+especially true in problems where the overall dimensions of the problem are
+large relative to the mean free path of neutrons. The correlation between
+fission sites also results in a correlation between realizations of tally random
+variables. Unfortunately, this correlation is not accounted for in
+\eqref{eq:variance-mean}. As a result, in problems where there is significant
+correlation between successive generations (equivalently, in problems with high
+dominance ratios), using \eqref{eq:variance-mean} to calculate the variance of
+the sample mean can result in underprediction of the true variance, and hence
+underprediction of confidence interval width for tallies.
+
+Various solutions to the underprediction of true variance have been been studied
+in the literature. One of the simpler solutions proposed is to simply treat the
+accumulated scores from multiple fission generations, referred to as a
+\emph{batch}\footnote{Many people use the terms ``batch'', ``generation'', and
+  ``cycle'' interchangeably. In this paper, the term ``batch'' specifically
+  refers to the grouping of multiple realizations and is generally not the same
+  as a ``generation'' or ``cycle'' in a criticality calculation.}, as a single
+realization of a tally random variable \cite{pne-gelbard-1990}. Mathematically,
+grouping $M$ successive realizations, $x_i, i = 1,\dots,M$, of a random variable
+yields a separate estimate of a new random variable:
 \begin{equation}
   y_j = \sum_{i=(j-1)M + 1}^{jM} x_i.
 \end{equation}
@@ -83,21 +95,24 @@ $s^2_{\bar{y}}$ are the same. The use of batches provides two main benefits:
     realizations of the tally random variables becomes negligible, thus ensuring
     that the true variance is not underestimated.
 \end{enumerate}
+This method has been implemented and successfully utilized in the MC21 Monte
+Carlo code \cite{physor-kelly-2012}.
+
+\section{Reduction of Tally Scores}
+\label{sec:tally-reduction}
 
 Now let us focus our attention on a situation whereby we are performing a Monte
 Carlo simulation on $p$ processors with the entire geometry of the problem
 replicated on each processor. After each realization, every processor has its
 own accumulated score for the tally variable $x_{i,k}$ where $k$ denotes the
-$k$-th processor. Traditionally, to obtain the same answer as would be obtained
-in a serial calculation, we would need to take the summation of the tallies (in
-MPI parlance, ``reduce'' the tallies) across all processors at the end of the
-realization, i.e. $x_i = \sum_{k=1}^p x_{i,k}$. This is depicted in
-\autoref{fig:history} where scores inside each box are summed into a single
-realization.
+$k$th processor. Traditionally, to obtain the same answer as would be obtained
+in a serial calculation, we would need to take the summation of the tallies
+across all processors at the end of the realization, i.e. $x_i = \sum_{k=1}^p
+x_{i,k}$. This is depicted in \autoref{fig:history} where scores inside each box
+are summed into a single realization.
 \begin{figure}[ht]
   \centering
-  \def\svgwidth{2in}
-  \input{figures/ch4/history.pdf_tex}
+  \includegraphics[width=3in]{figures/ch4/history.pdf}
   \caption{Summation of tally scores across processors when doing statistics
     based on a single particle history or single generation.}
   \label{fig:history}
@@ -118,32 +133,27 @@ alleviates the communication requirements while providing other aforementioned
 benefits. The summation of tally scores for this scenario is depicted in
 \autoref{fig:batch}. Since the reduction now need only be performed at the end
 of a batch, the data requirement is then $8\ell N' (p-1)$.
-\begin{figure}[ht]
+\begin{figure}[htb]
   \centering
-  \def\svgwidth{2in}
-  \input{figures/ch4/batch.pdf_tex}
+  \includegraphics[width=3in]{figures/ch4/batch.pdf}
   \caption{Summation of tally scores across processors when doing statistics
     based on a single batch with $M=4$.}
   \label{fig:batch}
 \end{figure}
 
-\begin{figure}[bht]
+\begin{figure}[htb]
   \centering
-  \def\svgwidth{2in}
-  \input{figures/ch4/batch-parallel.pdf_tex}
+  \includegraphics[width=3in]{figures/ch4/batch-parallel.pdf}
   \caption{Summation of tally scores across processors when doing statistics
     based on a batch combining realizations from a single processor with $M=4$.}
   \label{fig:batch-parallel}
 \end{figure}
 Rather than considering the batch to be the accumulation of scores from many
 realizations across many processors, there is no reason that one cannot
-reproduce\footnote{Most parallel algorithms in Monte Carlo codes are designed
-  such that they do not affect the results of a calculation, i.e. a parallel run
-  would reproduce the same answer as a serial run.} the same sample mean, within
-floating point precision, by considering a batch to be the accumulation of
-scores from many realizations on a single processor. This idea is shown in
-\autoref{fig:batch-parallel}. Expressed mathematically, our new random variable
-is
+reproduce the same sample mean, within floating point precision, by considering
+a batch to be the accumulation of scores from many realizations on a single
+processor. This idea is shown in \autoref{fig:batch-parallel}. Expressed
+mathematically, our new random variable is
 \begin{equation}
   z_{j,k} = \sum_{i=(j-1)M + 1}^{jM} x_{i,k}.
 \end{equation}
@@ -167,6 +177,7 @@ communication requirements may significantly improve the parallel efficiency.
   
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Results}
+\label{sec:tally-reduction-results}
 
 To test the efficacy of the proposed method, the ability to perform statistics
 based on batches, either across processors or on individual processors, was
@@ -180,7 +191,7 @@ per generation with 150 inactive batches and 150 active batches\footnote{One
   generation per batch was used for both cases.}. For the neutron cross-sections
 and $S(\alpha,\beta)$ tables, ENDF/B-VII.0 data was used. \autoref{tab:time}
 shows the elapsed wall-clock times for these two cases.
-\begin{table}[bt]
+\begin{table}[htb]
   \centering
   \caption{Elapsed wall-clock time for Monte Carlo Performance Benchmark with
     8,352,100 tally bins.}
@@ -206,14 +217,14 @@ bandwidth).
 
 \begin{figure}[ht]
   \centering
-  \includegraphics[width=3in]{figures/ch4/cpu_usage.png}
+  \includegraphics[width=3.5in]{figures/ch4/cpu_usage.png}
   \caption{Percentage CPU usage of entire cluster during two simulations of the
     Monte Carlo Performance Benchmark.}
   \label{fig:cpu-usage}
 \end{figure}
 \begin{figure}[ht]
   \centering
-  \includegraphics[width=3in]{figures/ch4/network.png}
+  \includegraphics[width=3.5in]{figures/ch4/network.png}
   \caption{Network bandwidth during two simulations of the Monte Carlo
     Performance Benchmark.}
   \label{fig:network}
