@@ -2,7 +2,7 @@
 manuscript = phdthesis
 
 # Source files
-sources = $(manuscript).tex $(wildcard chap*.tex) references.bib
+sources = $(wildcard *.tex) references.bib
 
 # PdfLaTeX compilation options
 latexopt = -halt-on-error -file-line-error
