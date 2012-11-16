@@ -12,7 +12,7 @@ requirements for such simulations will often exceed that available. For a
 realistic LWR simulation, tally data alone will likely require terabytes of
 memory (see discussion in \autoref{sec:tally-memory}). This problem is
 exacerbated by the fact that current parallel methods still generally rely on
-each program instance storing the full geometry, interaction cross section, and
+each program instance storing the full geometry, interaction cross sections, and
 tally data in memory.
 
 There is of course good reason to use full memory replication --- each process
@@ -44,13 +44,16 @@ While a considerable amount of work and analysis has been carried out on domain
 decomposition, very little work has focused on data decomposition to-date. The
 basic concept of data decomposition is that a disjoint subset of the processes
 in a simulation act as \emph{servers}, sending and/or receiving data to
-\emph{compute processes} as needed. In its most general form, the data could be
-geometry, cross sections, and/or tallies. The compute processes handle the
-actual transport of particles from birth to death and communicate with the
-servers as needed. Thus, we see that data decomposition does have some
-similarities to domain decomposition in the sense that the compute processes are
-still tracking particles independently of one another. However, particles are
-never transferred from one process to another.
+\emph{compute processes} as needed\footnote{It is not absolutely necessary to
+  have the servers and compute processes be mutually exclusive, but for the sake
+  of simplicity we will consider them to be disjoint in the current work.}. In
+its most general form, the data could be geometry, cross sections, and/or
+tallies. The compute processes handle the actual transport of particles from
+birth to death and communicate with the servers as needed. Thus, we see that
+data decomposition does have some similarities to domain decomposition in the
+sense that the compute processes are still tracking particles independently of
+one another. However, particles are never transferred from one process to
+another.
 
 The potential for data decomposition to alleviate per-node memory restrictions
 had been identified by Brown and Martin as early as 2004
@@ -116,11 +119,10 @@ scoring function would be incremented by an estimate of the scoring
 function. Thus, a single event can increment more than just a single location in
 memory. As an example, a tally could specify that the reaction rate for each of
 300 nuclides should be determined. In such a case, each scoring event would have
-to increment 300 tally bins. We see that the fact that we have $d$ bytes where
-$d \ge 8$ (the size of one double-precision float) stems from the fact that a
-single scoring event may need to score to hundreds of scoring functions. The
-message sent to a server at a scoring event consists of the scores for each
-scoring function.
+to increment 300 tally bins. We see that we will have $d$ bytes where $d \ge 8$
+(the size of one double-precision float) since a single scoring event may need
+to score to hundreds of scoring functions. The message sent to a server at a
+scoring event consists of the scores for each scoring function.
 
 Each process that has been designated as a server does not track any particles
 but instead continuously receives data from the compute processes and increments
@@ -748,7 +750,9 @@ to be in the bandwidth-dominated region for contemporary supercomputers, the
 extra effort of implementing explicit buffering did not seem to justify the
 performance benefit for cases that are latency-dominated. This is especially
 true given that, as we will see in \autoref{sec:results}, the overhead for
-latency-dominated cases is extremely small.
+latency-dominated cases is extremely small. Explicit buffering could also
+hypothetically limit network contention by reducing the total number of
+messages, but this effect is hard to quantify.
 
 \subsubsection{Combining successive scoring events}
 
@@ -842,7 +846,7 @@ observed dependence of $\mu$ on $d$ normalized to the $d=5$ case.
 
 The parameter study using tally servers on the Intrepid supercomputer consisted
 of 168 simulations with each combination of the following parameters: $p =
-16,32,64,128,256,512$, $c/s = 1,3,7,15$, and $d = 240, 480, 960, \allowbreak
+16,32,64,128, \allowbreak 256,512$, $c/s = 1,3,7,15$, and $d = 240, 480, 960,
 1920, 3840, 7680, 15360$. Like the baseline cases, the runs with tally servers
 had 10 inactive batches, 10 active batches, and $N/p = 500$. The effective
 overhead from tally servers was determined in the following manner. First, the
@@ -853,10 +857,11 @@ inactive batch time to determine the overhead in active batches. This
 essentially represents an estimate for the second term in \eqref{eq:model},
 i.e. it does not account for the fact that we have fewer compute
 processors. However, if we know $p$ and $c$, that source of overhead is trivial
---- it is really the extra overhead from message-passing that we are interested
-in. The overhead calculated in this manner for $c/s = 1$, $c/s = 3$, $c/s = 7$,
-and $c/s = 15$ is shown in \autoref{fig:intrepid-r1}, \autoref{fig:intrepid-r3},
-\autoref{fig:intrepid-r7}, and \autoref{fig:intrepid-r15}, respectively.
+to calculate --- it is really the extra overhead from message-passing that we
+are interested in. The overhead calculated in this manner for $c/s = 1$, $c/s =
+3$, $c/s = 7$, and $c/s = 15$ is shown in \autoref{fig:intrepid-r1},
+\autoref{fig:intrepid-r3}, \autoref{fig:intrepid-r7}, and
+\autoref{fig:intrepid-r15}, respectively.
 
 \begin{figure*}[!th]
   \makebox[\textwidth][c]{

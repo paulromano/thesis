@@ -21,18 +21,19 @@ ensure that the neutron population does not grow or shrink exponentially, $N$
 source sites for the next generation are randomly sampled from the $M$ fission
 bank sites that were stored.
 
-A common requirement in Monte Carlo particle transport codes is that a parallel
-calculation should reproduce the same answers as a serial calculation ---
-without reproducibility, it would be difficult to debug or otherwise verify that
-modifications to the code do not cause errors. Thus, the process by which the
-$N$ source sites are sampled from the $M$ fission bank sites has to be done in a
-reproducible manner. Similarly the order of the source bank sites from one
-generation to the next should be the same as in a serial calculation. When an
-eigenvalue calculation is run in parallel, each process has its own source bank
-and fission bank and thus coordination is required between processes. The use of
-work scheduling algorithms wherein the mapping of source sites to processes is
-non-deterministic make maintaining reproducibility in a parallel calculation
-even more challenging.
+A common requirement in Monte Carlo particle transport codes is that identical
+runs should produce identical resuls --- this also applies to parallel
+calculations, i.e. a parallel calculation should reproduce the same answers as a
+serial calculation. Without reproducibility, it would be difficult to debug or
+otherwise verify that modifications to the code do not cause errors. Thus, the
+process by which the $N$ source sites are sampled from the $M$ fission bank
+sites has to be done in a reproducible manner. Similarly the order of the source
+bank sites from one generation to the next should be the same as in a serial
+calculation. When an eigenvalue calculation is run in parallel, each process has
+its own source bank and fission bank and thus coordination is required between
+processes. The use of work scheduling algorithms wherein the mapping of source
+sites to processes is non-deterministic make maintaining reproducibility in a
+parallel calculation even more challenging.
 
 In \autoref{sec:master-slave}, we present an analysis of a master-slave parallel
 algorithm for fission source site sampling and redistribution and elucidate its
@@ -213,7 +214,7 @@ bank at several points in the algorithm:
 \item After sampling, where each process has some amount of source sites usually
   not equal to $N/p$;
 \item After redistribution, where each process again has $N/p$ source sites for
-  the next cycle.
+  the next generation.
 \end{enumerate}
 At the end of each fission generation, each process needs $N/p = 250$ fission
 bank sites to continue on the next generation. Suppose that process $p_0$
@@ -296,7 +297,7 @@ discussion). One should note that the expected value $k$ calculated by Monte
 Carlo power iteration (i.e. the method of successive generations) will be biased
 from the true fundamental eigenvalue of \eqref{eq:NTE} by $O(1/N)$
 \cite{ane-brissenden-1986}, but we will assume henceforth that the number of
-particle histories per cycle is sufficiently large to neglect this bias.
+particle histories per generation is sufficiently large to neglect this bias.
 
 With this formalism, we now have a framework within which we can determine the
 properties of the distribution of expected number of fission sites. The explicit
@@ -606,7 +607,7 @@ normality \cite{biometrika-shapiro-1965}.
 \subsection{Communication Time}
 
 In \autoref{sec:nearest-neighbor}, it was shown that the communication cost of
-nearest neighbor algorithm will depend on a parameter $\sigma$ representing the
+nearest-neighbor algorithm will depend on a parameter $\sigma$ representing the
 variance in the number of sites sent between adjacent processes. Thus, while we
 can conclude from \eqref{eq:t-ratio-limit} that the nearest-neighbor algorithm
 will certainly outperform the master-slave algorithm in the limit of large $p$
@@ -668,7 +669,9 @@ the fission generation, the number of source sites in each mesh cell has to be
 reduced from all processes before being used in \eqref{eq:shannon-entropy}. As
 such, in a series of weak scaling runs, the communication associated with
 calculating Shannon entropy would grow linearly with the number of processors
---- turning off the calculation of Shannon entropy circumvents this.
+--- turning off the calculation of Shannon entropy circumvents this. Another
+simple solution would be to fix the size of the Shannon entropy mesh
+irrespective of the number of particles per generation.
 
 \section{Other Considerations}
 \label{sec:fission-bank-other}
@@ -735,20 +738,20 @@ increases for an increasing number of histories or processors. Test results on
 the OpenMC Monte Carlo code confirm this finding. The analysis also shows that
 the maximum amount of communication in the algorithm is independent of the
 number of processors and instead will depend on the number of histories per
-cycle and the physical characteristics of the problem at hand. Again, testing
-within OpenMC confirms this prediction. Finally, a scaling study was performed
-on the Titan and Intrepid supercomputers and demonstrated perfect scaling with
-over 100,000 processor cores using the nearest-neighbor algorithm.
+generation and the physical characteristics of the problem at hand. Again,
+testing within OpenMC confirms this prediction. Finally, a scaling study was
+performed on the Titan and Intrepid supercomputers and demonstrated perfect
+scaling with over 100,000 processor cores using the nearest-neighbor algorithm.
 
 The reader should keep in mind that while the algorithm presented here will
 significantly improve the time necessary to sample and distribute fission sites
-between cycles, it has no effect on the actual transport simulation of particles
-moving through a material medium. Thus, it will not improve smaller simulations
-that would typically run on a workstation. However, for large simulations that
-necessitate the use of a large cluster or supercomputer to complete in a
-reasonable amount of time, this novel algorithm will improve the parallel
-efficiency and is an important step in achieving scalability up to thousands or
-millions of processors.
+between generations, it has no effect on the actual transport simulation of
+particles moving through a material medium. Thus, it will not improve smaller
+simulations that would typically run on a workstation. However, for large
+simulations that necessitate the use of a large cluster or supercomputer to
+complete in a reasonable amount of time, this novel algorithm will improve the
+parallel efficiency and is an important step in achieving scalability up to
+thousands or millions of processors.
 
 One potential shortcoming of the present algorithm is that it precludes the use
 of load balancing via existing algorithms for heterogeneous computer

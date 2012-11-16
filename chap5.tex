@@ -219,9 +219,9 @@ balance, the load imbalance penalty is a distinct quantity.
 
 \subsection{Basic properties}
 
-Given this simple problem definition above, it is clear that, for purely
-reflective boundary conditions (a good approximation for reflectors in power
-reactors) the \emph{global} number of particles at any \emph{stage} is given by
+Given this simple problem definition above, and assuming that leakage at the
+problem boundary is negligible (a good approximation for power reactors), the
+\emph{global} number of particles at any \emph{stage} is given by
 \begin{equation}
   \label{eq:pg}
   P_{i+1} = \sum_{j=1}^N p_{i+1,j} = \sum_{j=1}^N \lambda_{i,j}
@@ -234,8 +234,8 @@ partition $j$ at stage $i$.
 
 To estimate $\tau'$, the per-generation simulation time in the non-ideal case,
 we seek an expression for the \emph{local} particle distribution --- i.e. the
-number of particles on each partition $x_j$ at stage $i$. Assuming isotropic
-leakage, the neutron count on a partition is given by:
+number of particles on each partition $x_j$ at stage $i$. Assuming the leakage
+is equal on all surfaces, the neutron count on a partition is given by:
 \begin{equation}
   \label{eq:pl}
   p_{i+1,j} = \frac{1}{6} \left( \lambda_{i,j1}p_{i,j1} + \lambda_{i,j2}p_{i,j2}
@@ -247,7 +247,7 @@ stages, a given partition receives 1/6th of the leaked particles from each of
 its six neighbors on a Cartesian grid.
 
 Equation \eqref{eq:pl} shows that the evolution of the local particle
-distributions depends on the detailed alignment of the local particle counts and
+distribution depends on the detailed alignment of the local particle counts and
 the local leakage rates. To reduce it further requires additional
 assumptions. We start by noting that, in an LWR, the neutron spectrum and
 material heterogeneities are roughly constant from partition to partition (this
@@ -578,7 +578,7 @@ and subsequently using the approximation
   \label{eq:sum-approx}
   \sum_{i=1}^M x^i \approx x \sum_{i=0}^M x_i
 \end{equation}
-which should hold for $M$ large. Applying \eqref{eq:sum-approx} to
+which should hold for large $M$. Applying \eqref{eq:sum-approx} to
 $||\lambda^{max}||$ and $||\lbar||$ in \eqref{eq:correction2} yields
 \begin{equation}
   \label{eq:correction3}
@@ -625,7 +625,7 @@ cases: a single assembly, quarter-assembly, and ninth-assembly partition overlay
 using 20, 40, and 60 axial levels, respectively. In each case, the benchmark
 model was simulated on a 19-node Intel Xeon dual core cluster with 1 million
 neutrons per generation for 150 inactive and 500 active generations. For neutron
-cross-sections, data from ENDF/B-VII.0 was used.
+cross sections, data from ENDF/B-VII.0 was used.
 
 \autoref{fig:leakage-maps} illustrates the scale and level of variation in local
 leakage rates for the full, quarter, and one-ninth assembly cases.  The plots
@@ -670,7 +670,7 @@ by \eqref{eq:kfinal}, i.e.
   M = -\frac{\log P_0}{\log \lmave}.
 \end{equation}
 The values of the $\lmave$ were calculated for each of the three experiments and
-plugged into the \eqref{eq:totalstages}. \autoref{tab:num-stages} compares these
+inserted into \eqref{eq:totalstages}. \autoref{tab:num-stages} compares these
 results with those obtained directly from the simulation. The model formula
 behaves as expected, differing by only several percent from the measured
 data. Exact correspondence is not expected --- statistical fluctuations, slight
@@ -777,7 +777,8 @@ roughly independent of partition size as one would expect.
     \bottomrule
   \end{tabular}
   \caption{Values of $\Delta$ and the various terms which contribute to it for
-    each of the three numerical experiments.}
+    each of the three numerical experiments using the Monte Carlo performance
+    benchmark.}
   \label{tab:delta}
 \end{table}
 
@@ -785,8 +786,8 @@ Equation \eqref{eq:delta5} states that, with no load rebalancing, a simulation
 with this initial particle distribution is expected to take at most
 $C\frac{p_0^{max}}{\overline{P_0}}$ as long as a perfectly load balanced
 simulation. For the full assembly simulation $C=1.13$ and the total penalty is
-$3.67$, which could in many contexts be considered reasonable compared to
-e.g. the cost and complexity of implementing repartitioning
+$3.67$, which could in many contexts be considered reasonable compared to, for
+example, the cost and complexity of implementing repartitioning
 algorithms. Moreover, this is expected to be increasingly true as we move toward
 HPC architectures where off-chip data movement becomes much more expensive than
 local operations. However, it is clear that the situation rapidly deteriorates
@@ -799,17 +800,16 @@ $C$ approaches $M$. Note that we expect the performance to degenerate even
 further with decreasing partition size since $M$ is expected to increase
 according to \eqref{eq:kfinal}.
 
-\section{Conclusion}
+\section{Conclusions}
 
 We have developed simple relationships to quantitatively analyze the impact of
-load imbalances on the performance of domain decomposed Monte Carlo methods in
-the context of reactor analysis. These techniques provide a quantitative
-framework to estimate the additional performance costs incurred by typical load
-imbalances in reactor applications. We caution that there are a broad range of
-applications of neutron transport, and while the methodologies and different
-aspects of the conclusions arrived at here are generalizable to a broader range
-of problems, the complete set of conclusions are intended to apply specifically
-to the case of steady state analysis of power reactors.
+load imbalances on the performance of non-overlapping domain decomposed Monte
+Carlo methods in the context of reactor analysis. These techniques provide a
+quantitative framework to estimate the additional performance costs incurred by
+typical load imbalances in reactor applications. While the methodologies
+presented here are generalizable to a broader range of problems, many of the
+conclusions are intended to apply specifically to the case of steady state
+analysis of power reactors.
 
 Our analyses showed that, perhaps contrary to initial intuition, over reasonable
 parameter ranges the machine characteristics (bandwidth and latency) had very
@@ -827,12 +827,35 @@ consider the massive levels of concurrency on the path to exascale computing (at
 least without significant repartitioning, which is likely to be increasingly
 expensive on future architectures).
 
+For the reactor benchmark analyzed, the lack of enrichment zoning across the
+core led to a factor of about three penalty due to non-uniform particle
+densities. This penalty would be lower for an actual reactor configuration
+wherein the natural power distribution (and hence the particle distribution) is
+flatter. At any rate, the load imbalance due to non-uniform particle densities,
+i.e. $\frac{p_0^{max}}{\overline{P_0}}$, can largely be eliminated by a method
+that forces the particle distribution to be approximately uniform such as the
+uniform fission site method \cite{physor-kelly-2012}. However, the load
+imbalance due to non-uniform leakage cannot easily be circumvented; the use of
+overlapping domains may reduce $C$ somewhat, but at the expense of further
+algorithmic complexity in scoring tallies.
+
+To get a sense of how large $C$ might be for an actual reactor simulation, we
+must determine the minimum number of domains necessary based on memory
+constraints. In \autoref{sec:tally-memory}, it was estimated that a
+high-fidelity simulation of the MIT PWR benchmark would require 11 TB of
+tallies. If we assume that on a large supercomputer, we have 2 GB of memory
+available per core, then the tally memory must be divided over at least 5500
+domains. This corresponds to a domain size somewhere between the full-assembly
+and quarter-assembly cases discussed, and hence $C$ should be smaller than
+2.5. Based on these considerations alone, domain-decomposed simulations of full
+core reactor problems may be feasible with acceptable load imbalance penalties.
+
 In addition to judging whether these penalties are large or small in an absolute
 sense, the techniques presented allow one to weigh tradeoffs between domain
 decomposition and more sophisticated data decomposition strategies for their
 specific needs, or perhaps to estimate the cost of carrying out load
 re-balancing or other re-tracking techniques within an operational production
-code. When processing power is cheap and memory is at a premium, factors of
-several in performance time are not necessarily large, and performance models
-that go beyond the purely speculative are a critical component of assessing the
-best path forward.
+code. When processing power is cheap and memory is at a premium, performance
+penalties less than an order of magnitude are not necessarily large. Performance
+models that go beyond the purely speculative are a critical component of
+assessing the best path forward.

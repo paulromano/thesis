@@ -32,9 +32,14 @@
 \floatsetup[widefigure]{margins=hangleft}
 
 % Algorithm constructs
-\usepackage{algorithm}
-\usepackage{algorithmicx}
-\usepackage{algpseudocode}
+\usepackage[chapter]{algorithm} % Provides algorithm environment
+\usepackage{algorithmicx}       % Provides algorithmic block
+\usepackage{algpseudocode}      % Option of algorithmicx package
+\renewcommand{\thealgorithm}{\thechapter-\arabic{algorithm}}
+
+% Configure captions
+\captionsetup{labelfont=bf, labelsep=colon}
+\captionsetup[algorithm]{labelfont=bf, labelsep=colon}
 
 % Use Latin Modern for typewriter fonts
 \renewcommand{\ttdefault}{lmtt}
@@ -50,7 +55,8 @@
   columns=fullflexible,
   showstringspaces=false,
   commentstyle=\color{gray}\upshape,
-  frame=single
+  frame=single,
+  xleftmargin=0.55in
 }
 
 \lstdefinelanguage{XML}

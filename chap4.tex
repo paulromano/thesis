@@ -10,7 +10,7 @@ puzzle. We had also identified in \autoref{chap:intro} that large tallies can
 become problematic in large-scale parallel simulations due to excessive
 communication requirements. In fact, in the scaling study in
 \autoref{sec:fission-bank-results}, no tallies were included in the runs, and
-hence the necessary network communication was greatly reduced.
+hence the necessary network communication from collecting tallies was obviated.
 
 In this chapter, we propose a method that would greatly reduce network
 communication when performing parallel simulations with large tally data by
@@ -109,29 +109,53 @@ $k$th processor. Traditionally, to obtain the same answer as would be obtained
 in a serial calculation, we would need to take the summation of the tallies
 across all processors at the end of the realization, i.e. $x_i = \sum_{k=1}^p
 x_{i,k}$. This is depicted in \autoref{fig:history} where scores inside each box
-are summed into a single realization.
+are summed into a single realization. \autoref{alg:generation} shows a
+pseudocode for the tallying process when applied to an eigenvalue calculation.
 \begin{figure}[ht]
   \centering
-  \includegraphics[width=3in]{figures/ch4/history.pdf}
+  \includegraphics[width=3in]{figures/ch4/generation.pdf}
   \caption{Summation of tally scores across processors when doing statistics
     based on a single particle history or single generation.}
   \label{fig:history}
 \end{figure}
+\begin{algorithm}[htb]
+  \caption{Pseudocode for reducing tally scores across multiple processors when
+    doing statistics based on a single fission generation.}
+  \label{alg:generation}
+\begin{algorithmic}
+  \For {$i = 1 \to N$} \Comment{Loop over \textbf{generations}}
+    \State $x_{i,\ell} \gets 0$
+    \For {$j = 1 \to N_p$} \Comment{Loop over \textbf{particles}}
+      \While{alive}
+        \State Move to next collision
+        \State $x_{i,\ell} \gets x_{i,\ell} + \text{score}$
+      \EndWhile
+    \EndFor
+    \State MPI\_Reduce($x_{i,\ell}$, $x_i$, \dots) \Comment{Communication}
+    \State $s_1 \gets s_1 + x_i$ \Comment{Accumulate running sums}
+    \State $s_2 \gets s_2 + x_i^2$
+  \EndFor
+  \State $\bar{x} \gets \frac{s_1}{N}$ \Comment{Use running sums to calculate
+    statistics}
+  \State $s^2_{\bar{x}} \gets \frac{1}{N-1} \left [ \frac{s_2}{N} - \left (
+    \frac{s_1}{N} \right )^2 \right ]$
+\end{algorithmic}
+\end{algorithm}
 In terms of network communication, we will need to send at a minimum 8 bytes for
-each of the $\ell$ tally bins on $p-1$ processors to the master
-process\footnote{This is typically done with the Message Passing Interface by
-  calling MPI\_REDUCE.}. Thus, the total amount of data that must be
-communicated during the simulation is $8\ell N (p-1)$ bytes since the summation
-must be done at every realization. For a simulation with large $\ell$ and/or
-large $p$, the time to perform this communication can become prohibitive. An
-example of such a scenario is the calculation of the global power distribution
-in a large reactor model using a cluster or supercomputer, a calculation easily
-requiring millions of tally bins, if not more.
+each of the $\ell$ tally bins on $p-1$ processors to the master process. Thus,
+the total amount of data that must be communicated during the simulation is
+$8\ell N (p-1)$ bytes since the summation must be done at every realization. For
+a simulation with large $\ell$ and/or large $p$, the time to perform this
+communication can become prohibitive. An example of such a scenario is the
+calculation of the global power distribution in a large reactor model using a
+cluster or supercomputer, a calculation easily requiring millions of tally bins,
+if not more.
 
 Performing statistics over a batch consisting of multiple realizations somewhat
 alleviates the communication requirements while providing other aforementioned
 benefits. The summation of tally scores for this scenario is depicted in
-\autoref{fig:batch}. Since the reduction now need only be performed at the end
+\autoref{fig:batch}, and pseudocode for the tallying process is shown in
+\autoref{alg:batch}. Since the reduction now need only be performed at the end
 of a batch, the data requirement is then $8\ell N' (p-1)$.
 \begin{figure}[htb]
   \centering
@@ -140,6 +164,32 @@ of a batch, the data requirement is then $8\ell N' (p-1)$.
     based on a single batch with $M=4$.}
   \label{fig:batch}
 \end{figure}
+\begin{algorithm}[htb]
+  \caption{Pseudocode for reducing tally scores across multiple processors when
+    doing statistics based on batches consisting of multiple fission
+    generations.}
+  \label{alg:batch}
+\begin{algorithmic}
+  \For {$i = 1 \to N'$} \Comment{Loop over \textbf{batches}}
+    \State $x_{i,\ell} \gets 0$
+    \For {$j = 1 \to M$} \Comment{Loop over \textbf{generations}}
+      \For {$k = 1 \to N_p$} \Comment{Loop over \textbf{particles}}
+        \While{alive}
+          \State Move to next collision
+          \State $x_{i,\ell} \gets x_{i,\ell} + \text{score}$
+        \EndWhile
+      \EndFor
+    \EndFor
+    \State MPI\_Reduce($x_{i,\ell}$, $x_i$, \dots) \Comment{Communication}
+    \State $s_1 \gets s_1 + x_i$ \Comment{Accumulate running sums}
+    \State $s_2 \gets s_2 + x_i^2$
+  \EndFor
+  \State $\bar{x} \gets \frac{s_1}{N'}$ \Comment{Use running
+    sums to calculate statistics}
+  \State $s^2_{\bar{x}} \gets \frac{1}{N'-1} \left [
+      \frac{s_2}{N'} - \left ( \frac{s_1}{N'} \right )^2 \right ]$
+\end{algorithmic}
+\end{algorithm}
 
 \begin{figure}[htb]
   \centering
@@ -148,12 +198,40 @@ of a batch, the data requirement is then $8\ell N' (p-1)$.
     based on a batch combining realizations from a single processor with $M=4$.}
   \label{fig:batch-parallel}
 \end{figure}
+\begin{algorithm}[htb]
+  \caption{Pseudocode for reducing tally scores across multiple processors when
+    doing statistics based on batches combining realizations from a single
+    processor.}
+  \label{alg:batch-parallel}
+\begin{algorithmic}
+  \For {$i = 1 \to N'$} \Comment{Loop over \textbf{batches}}
+    \State $x_{i,\ell} \gets 0$
+    \For {$j = 1 \to M$} \Comment{Loop over \textbf{generations}}
+      \For {$k =1 \to N_p$} \Comment{Loop over \textbf{particles}}
+        \While{alive}
+          \State Move to next collision
+          \State $x_{i,\ell} \gets x_{i,\ell} + \text{score}$
+        \EndWhile
+      \EndFor
+    \EndFor
+    \State $s_{1,\ell} \gets s_{1,\ell} + x_{i,\ell}$ \Comment{Accumulate running sums}
+    \State $s_{2,\ell} \gets s_{2,\ell} + x_{i,\ell}^2$
+  \EndFor
+  \State MPI\_Reduce($s_{1,\ell}$, $s_1$, \dots) \Comment{Communication}
+  \State MPI\_Reduce($s_{2,\ell}$, $s_2$, \dots) \Comment{Communication}
+  \State $\bar{x} \gets \frac{s_1}{N'}$ \Comment{Use running sums to calculate statistics}
+  \State $s^2_{\bar{x}} \gets \frac{1}{N'-1} \left [
+      \frac{s_2}{N'} - \left ( \frac{s_1}{N'} \right )^2 \right ]$
+\end{algorithmic}
+\end{algorithm}
 Rather than considering the batch to be the accumulation of scores from many
 realizations across many processors, there is no reason that one cannot
 reproduce the same sample mean, within floating point precision, by considering
 a batch to be the accumulation of scores from many realizations on a single
-processor. This idea is shown in \autoref{fig:batch-parallel}. Expressed
-mathematically, our new random variable is
+processor. This idea is shown in \autoref{fig:batch-parallel}. Pseudocode for
+the tallying process as applied in an eigenvalue calculation is shown in
+\autoref{alg:batch-parallel}. Expressed mathematically, our new random variable
+is
 \begin{equation}
   z_{j,k} = \sum_{i=(j-1)M + 1}^{jM} x_{i,k}.
 \end{equation}
@@ -188,7 +266,7 @@ each with two quad-core Intel Xeon E5620 processors for a total of 64 cores. In
 both cases, the neutron production rate was tallied over a 289 x 289 x 100 mesh
 for a total of 8,352,100 tally bins. Each case was run with 640,000 particles
 per generation with 150 inactive batches and 150 active batches\footnote{One
-  generation per batch was used for both cases.}. For the neutron cross-sections
+  generation per batch was used for both cases.}. For the neutron cross sections
 and $S(\alpha,\beta)$ tables, ENDF/B-VII.0 data was used. \autoref{tab:time}
 shows the elapsed wall-clock times for these two cases.
 \begin{table}[htb]
@@ -242,7 +320,7 @@ variables were identical and almost all variances were within two standard
 deviations of one another.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{Discussion}
+\section{Conclusions}
 
 A novel scheme for reducing data communication requirements in parallel Monte
 Carlo calculations has been introduced here primarily aimed at criticality

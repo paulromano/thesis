@@ -68,11 +68,11 @@ solve a low-order system. This method has been proven to be quite effective in
 reducing the number of inactive batches in Monte Carlo eigenvalue
 calculations \cite{physor-lee-2012}.
 
-We see then that source convergence is, more or less, a ``solved'' problem as it
-concerns Monte Carlo eigenvalue calculations. For full-core LWR models, CMFD can
-be used to accelerate source convergence, and Shannon entropy can be used to
-assess source convergence. As a result, it was not an objective of this thesis
-to pursue further work in the area of source convergence.
+We see then that significant progress has been made in the area of source
+convergence in Monte Carlo eigenvalue calculations. For full-core LWR models,
+CMFD can be used to accelerate source convergence, and Shannon entropy can be
+used to assess source convergence. As a result, it was not an objective of this
+thesis to pursue further work in the area of source convergence.
 
 \subsection{Future Work}
 
@@ -365,4 +365,5 @@ reactor with 193 assemblies, 264 pins in each assembly, and a subdivision of
 each pin into 100 axial segments and 10 radial rings: a total of about 254
 million materials. For a depletion calculation, the densities of up to 300
 nuclides would need to be stored for each material. The material compositions
-alone would therefore require over 120 GB of memory.
+alone would therefore require over 120 GB of memory. This problem would affect
+not only Monte Carlo methods but deterministic methods as well.

@@ -9,7 +9,7 @@ physics capabilities, and modern software design practices. The development of
 the code started as a simplistic platform, first mentioned in
 \cite{lanl-romano-2009}, within which algorithms could be easily tested. At that
 stage, the geometry was limited to a simple structured mesh and all physics were
-based on predefined fictitious multigroup cross-sections. However, as further
+based on predefined fictitious multigroup cross sections. However, as further
 studies of domain and data decomposition schemes, described in
 \autoref{chap:domain-decomp} and \autoref{chap:data-decomp}, demanded that
 realistic geometry and physics be present, a decision was made to greatly expand
@@ -29,14 +29,15 @@ M\&C 2013 conference \cite{mc-romano-2013}.
 \section{Overview of Program Flow}
 
 OpenMC performs a Monte Carlo simulation one particle at a time --- at no point
-is more than one particle being tracked on a single program instance. Before any
-particles are tracked, the problem must be initialized. This involves the
-following steps:
+is more than one particle being tracked on a single program
+instance\footnote{When executed in parallel, each program instance tracks one
+  particle at a time.}. Before any particles are tracked, the problem must be
+initialized. This involves the following steps:
 \begin{itemize}
 \item Read input files and build data structures for the geometry, materials,
   tallies, and other associated variables.
 \item Initialize the pseudorandom number generator.
-\item Read ACE format cross-sections specified in the problem.
+\item Read ACE format cross sections specified in the problem.
 \item If using a special energy grid treatment such as a union energy grid with
   pointers, that must be initialized as well.
 \item In a fixed source problem, source sites are sampled from the specified
@@ -51,13 +52,13 @@ proceed. The life of a single particle will proceed as follows:
   sampled.
 \item Based on the particle's coordinates, the current cell in which the
   particle resides is determined.
-\item The energy-dependent cross-sections for the material that the particle is
-  currently in are determined. Note that this includes the total cross-section,
+\item The energy-dependent cross sections for the material that the particle is
+  currently in are determined. Note that this includes the total cross section,
   which is not pre-calculated.
 \item The distance to the nearest boundary of the particle's cell is determined
   based on the bounding surfaces to the cell.
 \item The distance to the next collision is sampled. If the total material
-  cross-section is $\Sigma_t$, this can be shown to be
+  cross section is $\Sigma_t$, this can be shown to be
   \begin{equation}
     d = -\frac{\ln \xi}{\Sigma_t}
   \end{equation}
@@ -70,26 +71,25 @@ proceed. The life of a single particle will proceed as follows:
   collision.
 \item The material at the collision site may consist of multiple
   nuclides. First, the nuclide with which the collision will happen is sampled
-  based on the total cross-sections. If the total cross section of material $i$
+  based on the total cross sections. If the total cross section of material $i$
   is $\Sigma_{t,i}$, then the probability that any nuclide is sampled is
   \begin{equation}
     P(i) = \frac{\Sigma_{t,i}}{\Sigma_t}.
   \end{equation}
-\item Once the specific nuclide is sampled, the random samples a reaction for
-  that nuclide based on the microscopic cross sections. If the microscopic
-  cross-section for some reaction $x$ is $\sigma_x$ and the total microscopic
+\item Once the specific nuclide is sampled, a reaction for that nuclide is
+  randomly sampled based on the microscopic cross sections. If the microscopic
+  cross section for some reaction $x$ is $\sigma_x$ and the total microscopic
   cross section for the nuclide is $\sigma_t$, then the probability that
   reaction $x$ will occur is
   \begin{equation}
     P(x) = \frac{\sigma_x}{\sigma_t}.
   \end{equation}
 \item If the sampled reaction is elastic or inelastic scattering, the outgoing
-  energy and angle is sampled from the appropriate distribution.  If the
-  reaction is $(n,xn)$, it's also treated as scattering and the weight of the
-  particle is increased by the multiplicity of the reaction. The particle then
-  continues from step 3. If the reaction is absorption or fission, the particle
-  dies and if necessary, fission sites are created and stored in the fission
-  bank.
+  energy and angle is sampled from the appropriate distribution.  Reactions of
+  type $(n,xn)$ are treated as scattering and the weight of the particle is
+  increased by the multiplicity of the reaction. The particle then continues
+  from step 3. If the reaction is absorption or fission, the particle dies and
+  if necessary, fission sites are created and stored in the fission bank.
 \end{enumerate}
 After all particles have been simulated, there are a few final tasks that must
 be performed before the run is finished. This include the following:
@@ -135,9 +135,7 @@ $f(x,y,z) > 0$.
 In OpenMC, every surface defined by the user is assigned an integer to uniquely
 identify it. We can then refer to either of the two half-spaces created by a
 surface by a combination of the unique ID of the surface and a positive/negative
-sign. For example, to refer to the negative half-space of a sphere (the volume
-inside the sphere) with unique ID 35, the reference would be
--35. \autoref{fig:halfspace} shows an example of an ellipse with unique ID 1
+sign. \autoref{fig:halfspace} shows an example of an ellipse with unique ID 1
 dividing space into two half-spaces.
 \begin{figure}[htb]
   \centering
@@ -227,8 +225,8 @@ since it will be truncated by the boundaries of the cell that contains it.
 When a cell is filled with a universe, it is possible to specify that the
 universe filling the cell should be rotated and translated. This is done through
 the \texttt{rotation} and \texttt{translation} attributes on a cell (note though
-that these can only be specified on a cell that is filled with another universe,
-not a material).
+that these can only be specified on a cell that is filled with a universe, not a
+material).
 
 It is not necessary to use or assign universes in a geometry if there are no
 repeated structures. Any cell in the geometry that is not assigned to a
@@ -262,12 +260,12 @@ With the possibility of a particle having coordinates on multiple levels
 to the nearest surface. Each different level of geometry has a set of boundaries
 with which the particle's direction of travel may intersect. Thus, it is
 necessary to check the distance to the surfaces bounding the cell in each
-level. This should be done starting the highest (most global) level going down
-to the lowest (most local) level. That ensures that if two surfaces on different
-levels are coincident, by default the one on the higher level will be selected
-as the nearest surface. Although they are not explicitly defined, it is also
-necessary to check the distance to surfaces representing lattice boundaries if a
-lattice exists on a given level.
+level. This should be done starting at the highest (most global) level going
+down to the lowest (most local) level. That ensures that if two surfaces on
+different levels are coincident, by default the one on the higher level will be
+selected as the nearest surface. Although they are not explicitly defined, it is
+also necessary to check the distance to surfaces representing lattice boundaries
+if a lattice exists on a given level.
 
 The following procedure is used to calculate the distance to each bounding
 surface. Suppose we have a particle at $(x_0,y_0,z_0)$ traveling in the
@@ -378,10 +376,10 @@ travel of the particle so that we can evaluate cross sections based on its
 material properties. At initialization, a list of neighboring cells is created
 for each surface in the problem as described in
 \autoref{sec:neighbor-lists}. The algorithm outlined in \autoref{sec:find-cell}
-is used to find a cell containing the particle except rather than searching all
-cells in the base universe, only the list of neighboring cells is searched. If
-this search is unsuccessful, then a search is done over every cell in the base
-universe.
+is used to find a cell containing the particle with one minor modification;
+rather than searching all cells in the base universe, only the list of
+neighboring cells is searched. If this search is unsuccessful, then a search is
+done over every cell in the base universe.
 
 \subsection{Building Neighbor Lists}
 \label{sec:neighbor-lists}
@@ -640,9 +638,9 @@ from $(n,\gamma)$ and other reactions.
 \subsection{Elastic Scattering}
 
 Elastic scattering refers to the process by which a neutron scatters off a
-nucleus and does not leave it in an excited. It is referred to as ``elastic''
-because in the center-of-mass system, the neutron does not actually lose
-energy. However, in lab coordinates, the neutron does indeed lose
+nucleus and does not leave it in an excited state. It is referred to as
+``elastic'' because in the center-of-mass system, the neutron does not actually
+lose energy. However, in lab coordinates, the neutron does indeed lose
 energy. Elastic scattering can be treated exactly in a Monte Carlo code thanks
 to its simplicity.
 
@@ -771,7 +769,7 @@ interpolation law. The number of prompt neutrons released per fission event
 $\nu_p$ is also given as a function of incident energy and can be specified in a
 polynomial or tabular format. The number of delayed neutrons released per
 fission event $\nu_d$ can only be specified in a tabular format. In practice, we
-only need to determine $nu_t$ and $nu_d$. Once these have been determined, we
+only need to determine $\nu_t$ and $\nu_d$. Once these have been determined, we
 can calculate the delayed neutron fraction
 \begin{equation}
   \label{eq:beta}
@@ -814,13 +812,13 @@ specified as a correlated angle-energy distribution. In the following sections,
 we will outline the methods used to sample secondary distributions as well as
 how they are used to modify the state of a particle.
 
-For elastic scattering, it is only necessary to specific a secondary angle
+For elastic scattering, it is only necessary to specify a secondary angle
 distribution since the outgoing energy can be determined analytically. Other
 reactions may also have separate secondary angle and secondary energy
 distributions that are uncorrelated. In these cases, the secondary angle
 distribution is represented as either
 \begin{itemize}
-\item An Isotropic angular distribution,
+\item An isotropic angular distribution,
 \item An equiprobable distribution with 32 bins, or
 \item A tabular distribution.
 \end{itemize}
@@ -855,7 +853,7 @@ where $\mu_i$ is the $i$th scattering cosine.
 \subsubsection{Tabular Angular Distribution}
 \label{sec:angle-tabular}
 
-As the MCNP Manual points out \cite{lanl-x5-2008}, using an equiprobable bin
+As the MCNP manual points out \cite{lanl-x5-2008}, using an equiprobable bin
 distribution works well for high-probability regions of the scattering cosine,
 but for low-probability regions it is not very accurate. Thus, a more accurate
 method is to represent the scattering cosine with a tabular distribution. In
@@ -975,9 +973,9 @@ have multiple secondary energy distributions. This is mainly useful for
 reactions with multiple neutrons in the exit channel such as $(n,2n)$ or
 $(n,3n)$. In these types of reactions, each neutron is emitted corresponding to
 a different excitation level of the compound nucleus, and thus in general the
-neutrons will originate from different energy distributions. The first step in
-sampling a secondary energy is to sample between multiple energy distributions
-if more than one is present.
+neutrons will originate from different energy distributions. If multiple energy
+distributions are present, they are assigned probabilities that can then be used
+to randomly select one.
 
 Once a secondary energy distribution has been sampled, the procedure for
 determining the outgoing energy will depend on which ACE law has been specified
@@ -1307,10 +1305,10 @@ calculated as
   E' = \frac{x}{x + y} E_i^{max}
 \end{equation}
 There are two important notes to make regarding the N-body phase space
-distribution. First, the documentation (and code) for MCNP5 has a mistake in the
-algorithm for $n = 4$. That being said, there are no existing nuclear data
-evaluations which use an N-body phase space distribution with $n = 4$, so the
-error would not affect any calculations. In the ENDF/B-VII.0 nuclear data
+distribution. First, the documentation (and code) for MCNP5-1.60 has a mistake
+in the algorithm for $n = 4$. That being said, there are no existing nuclear
+data evaluations which use an N-body phase space distribution with $n = 4$, so
+the error would not affect any calculations. In the ENDF/B-VII.0 nuclear data
 evaluation, only one reaction uses an N-body phase space distribution at all,
 the $(n,2n)$ reaction with $^2$H.
 
@@ -1357,7 +1355,7 @@ the post-collision direction is calculated as
   \end{split}
 \end{equation}
 
-\subsection{Effect of Thermal Motion on Cross-Sections}
+\subsection{Effect of Thermal Motion on Cross Sections}
 \label{sec:freegas}
 
 When a neutron scatters off of a nucleus, it may often be assumed that the
@@ -1380,9 +1378,9 @@ $\mathbf{v}_T$ is the velocity of the target nucleus, $v_r = || \mathbf{v}_n -
 cross section at 0 K, and $M (\mathbf{v}_T)$ is the probability distribution for
 the target nucleus velocity at temperature $T$ (a Maxwellian). In a Monte Carlo
 code, one must account for the effect of the thermal motion on both the
-integrated cross-section as well as secondary angle and energy
-distributions. For integrated cross-sections, it is possible to calculate
-thermally-averaged cross-sections by applying a kernel Doppler broadening
+integrated cross section as well as secondary angle and energy
+distributions. For integrated cross sections, it is possible to calculate
+thermally-averaged cross sections by applying a kernel Doppler broadening
 algorithm to data at 0 K (or some temperature lower than the desired
 temperature). The most ubiquitous algorithm for this purpose is the SIGMA1
 method \cite{nse-cullen-1976} developed by Red Cullen and subsequently refined
@@ -1408,9 +1406,9 @@ Careful inspection of \eqref{eq:doppler-broaden} however tells us that target
 velocities that produce relative velocities which correspond to high cross
 sections will have a greater contribution to the effective reaction rate. This
 is most important when the velocity of the incoming neutron is close to a
-resonance. For example, if the neutron's velocity corresponds to a trough in a
-resonance elastic scattering cross-section, a very small target velocity can
-cause the relative velocity to correspond to the peak of the resonance, thus
+resonance. For example, if the neutron's velocity corresponds to a local minimum
+in a resonance elastic scattering cross section, a very small target velocity
+can cause the relative velocity to correspond to the peak of the resonance, thus
 making a disproportionate contribution to the reaction rate. The conclusion is
 that if we are to sample a target velocity in the Monte Carlo code, it must be
 done in such a way that preserves the thermally-averaged reaction rate as per
@@ -1446,10 +1444,11 @@ relative velocities of interest. This is a good assumption for almost all cases
 since the elastic scattering cross section varies slowly with velocity for light
 nuclei, and for heavy nuclei where large variations can occur due to resonance
 scattering, the moderating effect is rather small. Nonetheless, this assumption
-may cause incorrect answers in systems with $^{238}$U where the low-lying
-resonances can cause a significant amount of up-scatter that would be ignored by
-this assumption. Nevertheless, with this assumption, we write $\sigma (v_r) =
-\sigma_s$ which simplifies \eqref{eq:target-pdf-1} to
+may cause incorrect answers in systems with low-lying resonances that can cause
+a significant amount of up-scatter that would be ignored by this assumption
+(e.g. $^{238}U$ in commercial light-water reactors). Nevertheless, with this
+assumption, we write $\sigma (v_r) = \sigma_s$ which simplifies
+\eqref{eq:target-pdf-1} to
 \begin{equation}
   \label{eq:target-pdf-2}
   p( \mathbf{v}_T ) d\mathbf{v}_T = \frac{\sigma_s}{C} || \mathbf{v}_n -
@@ -1578,11 +1577,11 @@ Substituting \eqref{eq:beta-to-x} into \eqref{eq:freegas-f2-2} along with $dx =
     \frac{4}{\sqrt{\pi}} x^2 e^{-x^2} + \left ( \frac{2}{\sqrt{\pi} y + 2}
     \right ) 2x^3 e^{-x^2} \right ] dx.
 \end{equation}
-It's important to make note of the following two facts. First, the terms outside
-the parentheses are properly normalized probability distribution functions that
-can be sampled directly. Secondly, the terms inside the parentheses are always
-less than unity. Thus, the sampling scheme for $q(x)$ is as follows. We
-sample a random number $\xi_1$ on the interval $[0,1)$ and if
+It's important to note the following two facts. First, the terms outside the
+parentheses are properly normalized probability distribution functions that can
+be sampled directly. Secondly, the terms inside the parentheses are always less
+than unity. Thus, the sampling scheme for $q(x)$ is as follows. We sample a
+random number $\xi_1$ on the interval $[0,1)$ and if
 \begin{equation}
   \label{eq:freegas-alpha}
   \xi_1 < \frac{2}{\sqrt{\pi} y + 2}
@@ -1615,7 +1614,7 @@ target molecule. If these effects are not accounted for in a simulation, the
 reported results may be highly inaccurate. There is no general analytic
 treatment for the scattering kinematics at low energies, and thus when nuclear
 data is processed for use in a Monte Carlo code, special tables are created that
-give cross-sections and secondary angle/energy distributions for thermal
+give cross sections and secondary angle/energy distributions for thermal
 scattering that account for thermal binding effects. These tables are mainly
 used for moderating materials such as light or heavy water, graphite, hydrogen
 in ZrH, beryllium, etc.
@@ -1637,14 +1636,15 @@ Each $S(\alpha,\beta,T)$ table can contain the following:
 Note that when we refer to ``inelastic'' and ``elastic'' scattering now, we are
 actually using these terms with respect to the \emph{scattering system}. Thermal
 inelastic scattering means that the scattering system is left in an excited
-state, not a particular nucleus as would be the case for inelastic level
-scattering. In a crystalline material, the excitation could correspond to the
-production of phonons. In a molecule, it could correspond to the excitation of
-rotational or vibrational modes.
+state; no particular nucleus is left in an excited state as would be the case
+for inelastic level scattering (which only occurs at much higher incident
+neutron energies). In a crystalline material, the excitation of the scattering
+system could correspond to the production of phonons. In a molecule, it could
+correspond to the excitation of rotational or vibrational modes.
 
 Both thermal elastic and thermal inelastic scattering are generally divided into
 incoherent and coherent parts. Coherent elastic scattering refers to scattering
-in crystalline solids like graphite or beryllium. These cross-sections are
+in crystalline solids like graphite or beryllium. These cross sections are
 characterized by the presence of \emph{Bragg edges} that relate to the crystal
 structure of the scattering material. Incoherent elastic scattering refers to
 scattering in hydrogenous solids such as polyethylene. As it occurs in ACE data,
@@ -1654,9 +1654,9 @@ is dominant for most other materials including hydrogen in water.
 \subsubsection{Calculating Integrated Cross Sections}
 
 The first aspect of using $S(\alpha,\beta,T)$ tables is calculating
-cross-sections to replace the data that would normally appear on the incident
+cross sections to replace the data that would normally appear on the incident
 neutron tables, which do not account for thermal binding effects. For incoherent
-elastic and inelastic scattering, the cross-sections are stored as linearly
+elastic and inelastic scattering, the cross sections are stored as linearly
 interpolable functions on a specified energy grid. For coherent elastic data,
 the cross section can be expressed as
 \begin{equation}
@@ -1666,9 +1666,9 @@ the cross section can be expressed as
 where $\sigma_c$ is the effective bound coherent scattering cross section, $W$
 is the effective Debye-Waller coefficient, $E_i$ are the energies of the Bragg
 edges, and $f_i$ are related to crystallographic structure factors. Since the
-functional form of the cross-section is just 1/E and the proportionality
+functional form of the cross section is just 1/E and the proportionality
 constant changes only at Bragg edges, the proportionality constants are stored
-and then the cross-section can be calculated analytically based on
+and then the cross section can be calculated analytically based on
 \eqref{eq:coherent-elastic-xs}.
 
 \subsubsection{Outgoing Angle for Coherent Elastic Scattering}
@@ -1678,13 +1678,13 @@ energy and angle of the neutron after scattering. For incoherent and coherent
 elastic scattering, the energy of the neutron does not actually change, but the
 angle does change. For coherent elastic scattering, the angle will depend on
 which Bragg edge scattered the neutron. The probability that edge $i$ will
-scatter then neutron is given by
+scatter the neutron is given by
 \begin{equation}
   \label{eq:coherent-elastic-probability}
   \frac{f_i e^{-4WE_i}}{\sum_j f_j e^{-4WE_j}}.
 \end{equation}
-After a Bragg edge has been sampled, the cosine of the angle of scattering is
-given analytically by
+After a Bragg edge has been sampled, the cosine of the scattering angle is given
+analytically by
 \begin{equation}
   \label{eq:coherent-elastic-angle}
   \mu = 1 - \frac{E_i}{E}
@@ -1694,7 +1694,7 @@ where $E_i$ is the energy of the Bragg edge that scattered the neutron.
 \subsubsection{Outgoing Angle for Incoherent Elastic Scattering}
 
 For incoherent elastic scattering, the probability distribution for the cosine
-of the angle of scattering is represented as a series of equally-likely discrete
+of the scattering angle is represented as a series of equally-likely discrete
 cosines $\mu_{i,j}$ for each incoming energy $E_i$ on the thermal elastic energy
 grid. First the outgoing angle bin $j$ is sampled. Then, if the incoming energy
 of the neutron satisfies $E_i < E < E_{i+1}$ the final cosine is
@@ -1745,7 +1745,7 @@ In the unresolved resonance energy range, resonances may be so closely spaced
 that it is not possible for experimental measurements to resolve all
 resonances. To properly account for self-shielding in this energy range, OpenMC
 uses the probability table method \cite{nse-levitt-1972}. For most thermal
-reactors, the use of probability tables will not significantly affect problem
+reactors, the use of probability tables will not significantly affect
 results. However, for some fast reactors and other problems with an appreciable
 flux spectrum in the unresolved resonance range, lack of probability tables may
 lead to incorrect results.
@@ -1776,7 +1776,7 @@ The procedure for determining cross sections in the unresolved range using
 probability tables is as follows. First, the bounding incoming energies are
 determined, i.e. find $i$ such that $E_i < E < E_{i+1}$. We then sample a cross
 section band $j$ using the cumulative probabilities for table $i$. This allows
-us to then calculate the elastic, fission, and capture cross-sections from the
+us to then calculate the elastic, fission, and capture cross sections from the
 probability tables interpolating between neighboring incoming energies. If
 linear interpolation is specified, then the cross sections are calculated as
 \begin{equation}
@@ -1845,7 +1845,7 @@ very low values, it is always used in conjunction with a weight cutoff and
 Russian rouletting. Two user adjustable parameters $w_c$ and $w_s$ are given,
 which are the weight below which neutrons should undergo Russian roulette and
 the weight assigned if they survive Russian roulette, respectively. The
-algorithm for Russian rouletting is as follows. After a collision if $w < w_c$,
+algorithm for Russian rouletting is as follows. After a collision, if $w < w_c$,
 then the neutron is killed with probability $1 - w/w_s$. If it survives, the
 weight is set equal to $w_s$. One can confirm that the average weight following
 Russian roulette is simply $w$, so the game can be considered ``fair''. By
@@ -1926,7 +1926,9 @@ event, $A$ is the set of all events resulting in reaction $x$, and $W$ is the
 total starting weight of the particles, and $w_i$ is the pre-collision weight of
 the particle as it enters event $i$. One should note that
 \eqref{eq:analog-estimator} is volume-integrated so if we want a volume-averaged
-quantity, we need to divide it by the volume of the region of integration.
+quantity, we need to divide it by the volume of the region of integration. If
+survival biasing is employed, the analog estimator cannot be used for any
+reactions with zero neutrons in the exit channel.
 
 \subsubsection{Collision Estimator}
 
@@ -2034,12 +2036,12 @@ interpretation of uncertainties.
 \subsubsection{Law of Large Numbers}
 
 The law of large numbers is an important statistical result that tells us that
-the average value of the result a large number of repeated experiments should be
-close to the expected value. Let $X_1, X_2, \dots, X_n$ be an infinite sequence
-of independent, identically-distributed random variables with expected values
-$E(X_1) = E(X_2) = \mu$. One form of the law of large numbers states that the
-sample mean $\bar{X_n} = \frac{X_1 + \dots + X_n}{n}$ converges in probability
-to the true mean, i.e. for all $\epsilon > 0$
+the average value of the result of a large number of repeated experiments should
+be close to the expected value. Let $X_1, X_2, \dots, X_n$ be an infinite
+sequence of independent, identically-distributed random variables with expected
+values $E(X_1) = E(X_2) = \mu$. One form of the law of large numbers states that
+the sample mean $\bar{X_n} = \frac{X_1 + \dots + X_n}{n}$ converges in
+probability to the true mean, i.e. for all $\epsilon > 0$
 \begin{equation}
     \lim\limits_{n\rightarrow\infty} P \left ( \left | \bar{X}_n - \mu \right |
     \ge \epsilon \right ) = 0.
