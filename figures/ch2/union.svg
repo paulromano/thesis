@@ -82,7 +82,7 @@
        style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">+1</tspan></text>
   <text
      sodipodi:linespacing="125%"
-     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
      xml:space="preserve"
      id="text3823-0"
      y="91"
@@ -90,18 +90,18 @@
        id="tspan3825-1"
        y="91"
        x="131"
-       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">-1</tspan></text>
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter">−1</tspan></text>
   <text
      sodipodi:linespacing="125%"
-     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
      xml:space="preserve"
      id="text3823-0-5"
      y="111"
-     x="206"><tspan
+     x="196.14893"><tspan
        id="tspan3825-1-8"
        y="111"
-       x="206"
-       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">-2</tspan></text>
+       x="196.14893"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter">−2</tspan></text>
   <text
      sodipodi:linespacing="125%"
      style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
@@ -115,15 +115,15 @@
        style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">+2</tspan></text>
   <text
      sodipodi:linespacing="125%"
-     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
+     style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
      xml:space="preserve"
      id="text3823-0-5-0"
-     y="171"
-     x="151"><tspan
+     y="169.90544"
+     x="146.07446"><tspan
        id="tspan3825-1-8-0"
-       y="171"
-       x="151"
-       style="-inkscape-font-specification:Bitstream Charter;font-family:Bitstream Charter;font-weight:normal;font-style:normal;font-stretch:normal;font-variant:normal;font-size:20px;text-anchor:start;text-align:start;writing-mode:lr;line-height:125%">-3</tspan></text>
+       y="169.90544"
+       x="146.07446"
+       style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;writing-mode:lr-tb;text-anchor:start;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter">−3</tspan></text>
   <text
      sodipodi:linespacing="125%"
      style="font-size:20px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Bitstream Charter;-inkscape-font-specification:Bitstream Charter"
