@@ -97,7 +97,7 @@ be performed before the run is finished. This include the following:
 \item With the accumulated sum and sum of squares for each tally, the sample
   mean and its variance is calculated.
 \item All tallies and other results are written to disk.
-\item If requested, a source file is written to disk
+\item If requested, a source file is written to disk.
 \item All allocatable arrays are deallocated.
 \end{itemize}
 
@@ -322,7 +322,7 @@ is found that contains the specified point.
 \subsection{Determining if a Coordinate is in a Cell}
 \label{sec:cell-contains}
 
-To determine which cell a particle is in given it's coordinates, we need to be
+To determine which cell a particle is in given its coordinates, we need to be
 able to check whether a given cell contains a point. The algorithm for
 determining if a cell contains a point is as follows. For each surface that
 bounds a cell, we determine the particle's sense with respect to the surface. As
@@ -458,7 +458,7 @@ Monte Carlo codes. The use of a standard cross section format allows for a
 direct comparison of OpenMC with other codes since the same cross section
 libraries can be used.
 
-The ACE-format contains continuous-energy cross sections for the following types
+The ACE format contains continuous-energy cross sections for the following types
 of reactions: elastic scattering, fission (or first-chance fission,
 second-chance fission, etc.), inelastic scattering, $(n,xn)$, $(n,\gamma)$, and
 various other absorption reactions. For those reactions with one or more
@@ -743,7 +743,7 @@ perspective of a Monte Carlo simulation it actually bears more similarities to
 inelastic scattering since fission results in secondary neutrons in the exit
 channel. Other absorption reactions like $(n,\gamma)$ or $(n,\alpha)$, on the
 contrary, produce no neutrons. There are a few other idiosyncrasies in treating
-fission. In a criticality calculation, secondary neutrons from fission are only
+fission. In an eigenvalue calculation, secondary neutrons from fission are only
 ``banked'' for use in the next generation rather than being tracked as secondary
 neutrons from elastic and inelastic scattering would be. On top of this, fission
 is sometimes broken into first-chance fission, second-chance fission, etc. An
@@ -1074,7 +1074,7 @@ where $\xi_2$ is a random number sampled uniformly on $[0,1)$. At this point, we
   outgoing energy on the $\ell$th distribution is
 \begin{equation}
   \label{eq:energy-histogram}
-  \hat{E} = E_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}
+  \hat{E} = E_{\ell,j} + \frac{\xi_2 - c_{\ell,j}}{p_{\ell,j}}.
 \end{equation}
 If linear-linear interpolation is to be used, the outgoing energy on the
 $\ell$th distribution is
@@ -1083,7 +1083,7 @@ $\ell$th distribution is
   \hat{E} = E_{\ell,j} + \frac{E_{\ell,j+1} - E_{\ell,j}}{p_{\ell,j+1} -
     p_{\ell,j}} \left ( \sqrt{p_{\ell,j}^2 + 2 \frac{p_{\ell,j+1} -
       p_{\ell,j}}{E_{\ell,j+1} - E_{\ell,j}} ( \xi_2 - c_{\ell,j} )} -
-  p_{\ell,j} \right )
+  p_{\ell,j} \right ).
 \end{equation}
 Since this outgoing energy may violate reaction kinematics, we then scale it to
 minimum and maximum energies interpolated between the neighboring outgoing
@@ -1221,7 +1221,7 @@ scattering angle is
 \begin{equation}
   \label{eq:KM-pdf-angle}
   p(\mu) d\mu = \frac{A}{2 \sinh (A)} \left [ \cosh (A\mu) + R \sinh (A\mu)
-    \right ] d\mu
+    \right ] d\mu.
 \end{equation}
 The rules for sampling this probability distribution function can be derived
 based on rules C39 and C40 in the Monte Carlo Sampler
@@ -1235,7 +1235,7 @@ where $T = (2 \xi_4 - 1) \sinh (A)$. If $\xi_3 \le R$, then the
 outgoing angle is
 \begin{equation}
   \label{eq:KM-angle-2}
-  \mu = \frac{1}{A} \ln \left ( \xi_4 e^A + (1 - \xi_4) e^{-A} \right )
+  \mu = \frac{1}{A} \ln \left ( \xi_4 e^A + (1 - \xi_4) e^{-A} \right ).
 \end{equation}
 
 \subsubsection{ACE Law 61 - Correlated Energy and Angle Distribution}
@@ -1514,7 +1514,7 @@ Thus, we can infer that
 \begin{equation}
   \label{eq:change-terms}
   || \mathbf{v}_n - \mathbf{v}_T || = || \mathbf{v}_r || = v_r = \sqrt{v_n^2 +
-    v_T^2 - 2v_n v_T \mu}
+    v_T^2 - 2v_n v_T \mu}.
 \end{equation}
 Inserting \eqref{eq:change-terms} into \eqref{eq:target-pdf-3}, we obtain
 \begin{equation}
@@ -1533,7 +1533,7 @@ parts as such:
   f_1(v_T, \mu) &= \frac{4\sigma_s}{\sqrt{\pi} C'} \frac{ \sqrt{v_n^2 + v_T^2 -
       2v_n v_T \mu}}{v_n + v_T} \\
   \label{eq:divide-pdf-f2}
-  f_2(v_T) &= (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right )
+  f_2(v_T) &= (v_n + v_T) \beta^3 v_T^2 \exp \left ( -\beta^2 v_T^2 \right ).
 \end{align}
 In general, any probability distribution function of the form $p(x) =
 f_1(x) f_2(x)$ with $f_1(x)$ bounded can be sampled by sampling
@@ -1563,7 +1563,7 @@ Thus, we need to sample the probability distribution function
   \label{eq:freegas-f2-2}
   q(v_T) dv_T = \left ( \frac{4\beta^2 v_n v_T^2}{\sqrt{\pi} \beta v_n + 2} +
   \frac{4\beta^4 v_T^3}{\sqrt{\pi} \beta v_n + 2} \right ) exp \left (
-  -\beta^2 v_T^2 \right )
+  -\beta^2 v_T^2 \right ).
 \end{equation}
 Now, let us do a change of variables with the following definitions
 \begin{equation}
@@ -1605,7 +1605,7 @@ C'$, we then sample another random number $\xi_3$ and accept the sampled target
 speed and cosine if
 \begin{equation}
   \label{eq:freegas-accept-2}
-  \xi_3 < \frac{\sqrt{v_n^2 + v_T^2 - 2 v_n v_T \mu}}{v_n + v_T}
+  \xi_3 < \frac{\sqrt{v_n^2 + v_T^2 - 2 v_n v_T \mu}}{v_n + v_T}.
 \end{equation}
 If is not accepted, then we repeat the process and resample a target speed and
 cosine until a combination is found that satisfies \eqref{eq:freegas-accept-2}.
@@ -1665,7 +1665,7 @@ interpolable functions on a specified energy grid. For coherent elastic data,
 the cross section can be expressed as
 \begin{equation}
   \label{eq:coherent-elastic-xs}
-  \sigma(E) = \frac{\sigma_c}{E} \sum_{E_i < E} f_i e^{-4WE_i}.
+  \sigma(E) = \frac{\sigma_c}{E} \sum_{E_i < E} f_i e^{-4WE_i}
 \end{equation}
 where $\sigma_c$ is the effective bound coherent scattering cross section, $W$
 is the effective Debye-Waller coefficient, $E_i$ are the energies of the Bragg
@@ -2269,7 +2269,7 @@ calculation has to be determined on-the-fly during the calculation.
 \subsection{Method of Successive Generations}
 \label{sec:successive-generations}
 
-The method used to converge on the fission source distribution in a criticality
+The method used to converge on the fission source distribution in an eigenvalue
 calculation, known as the method of successive generations, was first introduced
 by Lieberoth \cite{nukleonik-lieberoth-1968}. In this method, a finite number of
 neutron histories, $N$, are tracked through their lifetime iteratively. If
@@ -2312,7 +2312,7 @@ given batch is a finite set of coordinates in Euclidean space. In order to
 analyze the convergence, we would either need to use a method for assessing
 convergence of an $N$-dimensional quantity or transform our set of coordinates
 into a scalar metric. The latter approach has been developed considerably over
-the last decade and a method now commonly used in Monte Carlo criticality
+the last decade and a method now commonly used in Monte Carlo eigenvalue
 calculations is to use a metric called the Shannon entropy
 \cite{physor-brown-2006}, a concept borrowed from information theory.
 
