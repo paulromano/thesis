@@ -706,6 +706,23 @@ FUNCTION {format.date}
   if$
 }
 
+% Display month and year for inproceedings entries
+
+FUNCTION {format.month.year}
+{ month empty$
+    {  year empty$
+         { "" }
+         { year }
+       if$
+    }
+    { year empty$
+        { month }
+        { month ", " * year * }
+      if$
+    }
+  if$
+}
+
 % The format.btitle is for formatting the title field when it is a book-like
 % entry---the style used here keeps it in uppers-and-lowers and emphasizes it.
 
@@ -867,8 +884,8 @@ FUNCTION {format.pages}
 { pages empty$
     { "" }
     { pages multi.page.check
-        { "pages" pages n.dashify tie.or.space.connect }
-        { "page" pages tie.or.space.connect }
+        { "p." pages n.dashify tie.or.space.connect }
+        { "p." pages tie.or.space.connect }
       if$
     }
   if$
@@ -877,12 +894,12 @@ FUNCTION {format.pages}
 FUNCTION {format.pages.a}
 { pages empty$
     { "" }
-    { "page" pages first.page tie.or.space.connect }
+    { "p." pages first.page tie.or.space.connect }
   if$
 }
 
-% The format.vol.num.pages function is for the volume, number, and page range
-% of a journal article.  We use the format:  vol(number):pages, with some
+% The format.vol.num.pages function is for the volume, number, and page range of
+% a journal article.  We use the format: **vol**, *number*, firstpage, with some
 % variations for empty fields.  This doesn't begin a sentence.
 
 FUNCTION {format.vol.num.pages}
@@ -892,6 +909,10 @@ FUNCTION {format.vol.num.pages}
       "," *
       volume field.or.null embolden
       " " swap$ * *
+      number empty$
+        'skip$
+        { ", " * number emphasize * }
+      if$
       pages empty$
         'skip$
         { duplicate$ empty$
@@ -1375,10 +1396,10 @@ FUNCTION {inproceedings}
         { organization publisher new.sentence.checkb
           organization output
           publisher output
-          format.date "year" output.check
+          format.month.year "year" output.check
         }
         { address output.nonnull
-          format.date "year" output.check
+          format.month.year "year" output.check
           new.sentence
           organization output
           publisher output
@@ -1545,7 +1566,7 @@ FUNCTION {techreport}
   new.block
   format.title "title" output.check
   new.block
-  format.tr.number output.nonnull
+  format.tr.number output
   institution "institution" output.check
   before.all 'output.state :=
   " " format.date paren * "year" output.check
