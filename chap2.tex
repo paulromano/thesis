@@ -68,7 +68,8 @@ proceed. The life of a single particle will proceed as follows:
   next collision, the particle is moved forward to this boundary. Then, the
   process is repeated from step 2. If the distance to collision is closer than
   the distance to the nearest boundary, then the particle will undergo a
-  collision.
+  collision. In either case, track-length estimate tallies are scored to based
+  on the closest distance.
 \item The material at the collision site may consist of multiple
   nuclides. First, the nuclide with which the collision will happen is sampled
   based on the total cross sections. If the total cross section of material $i$
