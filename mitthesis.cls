@@ -423,6 +423,13 @@ reserved.\par\permission}}
   \setbox\@abstractsupervisor\vbox{\unvbox\@abstractsupervisor
   \vskip\baselineskip \def\baselinestretch{1}\@normalsize 
   \par\noindent Thesis Supervisor: #1 \\ Title: #2}}
+\def\reader#1#2{\setbox\@titlesupervisor\vbox
+  {\unvbox\@titlesupervisor \vskip 10pt% plus 1fil minus 1fil
+  \def\baselinestretch{1}\large
+  \signature{Certified by}{#1 \\ #2 \\ Thesis Reader}}
+  \setbox\@abstractsupervisor\vbox{\unvbox\@abstractsupervisor
+  \vskip\baselineskip \def\baselinestretch{1}\@normalsize 
+  \par\noindent Thesis Reader: #1 \\ Title: #2}}
 
 % department chairman, not thesis committee chairman
 \def\chairman#1#2{\gdef\@chairmanname{#1}\gdef\@chairmantitle{#2}}
