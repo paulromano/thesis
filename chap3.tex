@@ -22,7 +22,7 @@ source sites for the next generation are randomly sampled from the $M$ fission
 bank sites that were stored.
 
 A common requirement in Monte Carlo particle transport codes is that identical
-runs should produce identical resuls --- this also applies to parallel
+runs should produce identical results --- this also applies to parallel
 calculations, i.e. a parallel calculation should reproduce the same answers as a
 serial calculation. Without reproducibility, it would be difficult to debug or
 otherwise verify that modifications to the code do not cause errors. Thus, the
@@ -700,8 +700,8 @@ applied for load-balancing with the nearest-neighbor fission bank algorithm.
 The results in \autoref{fig:scaling} demonstrate that the lack of a load
 balancing mechanism does not degrade parallel efficiency when used on a
 homogeneous cluster. Previous studies using MCNP on a homogeneous Linux cluster
-have shown a 5-10\% loss in parallel efficiency when not using any sort of load
-balancing \cite{lanl-brown-2005}.
+have shown a 5-10\% loss in parallel efficiency when not using load balancing
+\cite{lanl-brown-2005}.
 
 It is also possible to employ a basic means of load balancing for heterogeneous
 architectures using in the nearest-neighbor algorithm by ``tuning'' the
@@ -733,15 +733,15 @@ can be used as source sites on that same processor --- in doing so, it avoids
 unnecessary communication between processors.
 
 Analysis of the algorithm shows that it should outperform existing algorithms
-for fission bank synchronization and that furthermore, the performance gap
-increases for an increasing number of histories or processors. Test results on
-the OpenMC Monte Carlo code confirm this finding. The analysis also shows that
-the maximum amount of communication in the algorithm is independent of the
-number of processors and instead will depend on the number of histories per
-generation and the physical characteristics of the problem at hand. Again,
-testing within OpenMC confirms this prediction. Finally, a scaling study was
-performed on the Titan and Intrepid supercomputers and demonstrated perfect
-scaling with over 100,000 processor cores using the nearest-neighbor algorithm.
+for fission bank synchronization and furthermore, the performance gap increases
+for an increasing number of histories or processors. Test results on the OpenMC
+Monte Carlo code confirm this finding. The analysis also shows that the maximum
+amount of communication in the algorithm is independent of the number of
+processors and instead will depend on the number of histories per generation and
+the physical characteristics of the problem at hand. Again, testing within
+OpenMC confirms this prediction. Finally, a scaling study was performed on the
+Titan and Intrepid supercomputers and demonstrated perfect scaling with over
+100,000 processor cores using the nearest-neighbor algorithm.
 
 The reader should keep in mind that while the algorithm presented here will
 significantly improve the time necessary to sample and distribute fission sites
@@ -749,7 +749,7 @@ between generations, it has no effect on the actual transport simulation of
 particles moving through a material medium. Thus, it will not improve smaller
 simulations that would typically run on a workstation. However, for large
 simulations that necessitate the use of a large cluster or supercomputer to
-complete in a reasonable amount of time, this novel algorithm will improve the
+complete in a reasonable amount of time, this novel algorithm improves the
 parallel efficiency and is an important step in achieving scalability up to
 thousands or millions of processors.
 

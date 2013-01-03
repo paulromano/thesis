@@ -463,14 +463,14 @@ has 193 assemblies, each having 264 pins. With 500 axial and 10 radial zones
 within each fuel pin for depletion purposes, the total number of depletable
 materials would be 254,760,000. With approximately 300 nuclides and six reaction
 rates needed for each nuclide, the total memory for tallies would be
-$254,760,000 \times 300 \times 6 \times 24 \text{ bytes} = 11,005,632,000,000$
-bytes\footnote{We have chosen the last multiplier as 24 bytes for the following
-  reason; for each tally bin we need to store the accumulated sum, the
-  accumulated sum of squares, and also a temporary variable that is used for a
-  single batch. Thus there are three 8-byte floating point numbers.} or
-\textbf{11 terabytes}. Again, in the SPMD parallel model, this amount of memory
-would be required for each process. This is clearly a major problem and one that
-has no easy resolution.
+$254,760,000 \times 300 \times 6 \times 24$ bytes\footnote{We have chosen the
+  last multiplier as 24 bytes for the following reason; for each tally bin we
+  need to store the accumulated sum, the accumulated sum of squares, and also a
+  temporary variable that is used for a single batch. Thus there are three
+  8-byte floating point numbers.} = 11,005,632,000,000 bytes or \textbf{11
+  terabytes}. Again, in the SPMD parallel model, this amount of memory would be
+required for each process. This is clearly a major problem and one that has no
+easy resolution.
 
 One of the primary objectives of this thesis is to study algorithms for
 decomposing tally memory and provide guidance on the best path going forward for

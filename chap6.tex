@@ -9,9 +9,9 @@ Carlo, as well as deterministic, methods is coping with limited amounts of
 memory. While the availability of great amounts of processing power might
 otherwise enable us to perform simulations with remarkable fidelity, the memory
 requirements for such simulations will often exceed that available. For a
-realistic LWR simulation, tally data alone will likely require terabytes of
-memory (see discussion in \autoref{sec:tally-memory}). This problem is
-exacerbated by the fact that current parallel methods still generally rely on
+high-fidelity realistic LWR simulation, tally data alone will likely require
+terabytes of memory (see discussion in \autoref{sec:tally-memory}). This problem
+is exacerbated by the fact that current parallel methods still generally rely on
 each program instance storing the full geometry, interaction cross sections, and
 tally data in memory.
 
@@ -57,9 +57,9 @@ another.
 
 The potential for data decomposition to alleviate per-node memory restrictions
 had been identified by Brown and Martin as early as 2004
-\cite{trans-brown-2004}, but to-date it has not been demonstrated or even
-analyzed. Some early scoping work was done to investigate whether remote memory
-access would be suitable for data decomposition algorithms
+\cite{trans-brown-2004}, but to-date it appears not to have been demonstrated or
+even analyzed. Some early scoping work was done to investigate whether remote
+memory access would be suitable for data decomposition algorithms
 \cite{pnst-romano-2011}. However, these preliminary works focused more on
 decomposing geometry and cross section data. In this paper, we take a first look
 at an algorithm designed not to decompose geometry or cross section data but

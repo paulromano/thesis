@@ -316,7 +316,7 @@ One can see from these figures that during the second simulation, where
 reductions on tallies were not performed until the end of the simulation, the
 network usage was drastically lower than when reductions were performed at every
 generation. Lastly, we remark that all reported sample means of the tally
-variables were identical and almost all variances were within two standard
+variables were identical and nearly all variances were within two standard
 deviations of one another.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -337,7 +337,7 @@ variance of the sample mean will not be the same as if one had run the exact
 same calculation in serial. However, the {\it expected value} of the sample
 variance will be the same and the sample mean will be reproduced to within
 floating point error. For users who are willing to sacrifice reproducibility of
-tally variances, this detriment does not outweigh the overwhelming benefit of
+tally variances, this detriment is far outweighed by the overwhelming benefit of
 drastically reduced network communication and improved parallel efficiency.
 
 It should be noted that this method does require that the sum and sum of squares
@@ -350,10 +350,11 @@ codes do not take advantage of this fact and simply replicate all tally data in
 the memory of each process.
 
 As a final note, even when this method is used, it may still be desirable to
-perform a reduction over some global tallies such as the eigenvalue. Since the
-eigenvalue is used in determining the average number of fission sites produced
-at each collision, reproducibility of the sample means of local tallies can only
-be preserved if the eigenvalue is the same as it would have been in a serial
-run. The parallel communication necessary to perform a parallel reduction of
-global tallies such as the eigenvalue will be very small since it is generally
-limited to only a few quantities.
+perform a reduction over some global tallies such as the eigenvalue. If the
+eigenvalue is not reduced at each generation, each process would have a
+different estimate of the eigenvalue; therefore the average number of fission
+sites produced at each collision would differ from a serial run. To preserve
+reproducibility of the sample means of local tallies, it is thus necessary to
+reduce the eigenvalue at each generation. The parallel communication necessary
+to perform a parallel reduction of global tallies such as the eigenvalue will be
+very small since it is generally limited to only a few quantities.
